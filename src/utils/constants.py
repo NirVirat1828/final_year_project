@@ -4,14 +4,19 @@ Constants module.
 This module defines constants used throughout the project.
 """
 
+import os
+
+# Get the project root directory (assumes constants.py is in src/utils/)
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 # Data paths
-RAW_DATA_PATH = '../data/raw/'
-PROCESSED_DATA_PATH = '../data/processed/'
-SYNTHETIC_DATA_PATH = '../data/synthetic/'
+RAW_DATA_PATH = os.path.join(PROJECT_ROOT, 'data', 'raw')
+PROCESSED_DATA_PATH = os.path.join(PROJECT_ROOT, 'data', 'processed')
+SYNTHETIC_DATA_PATH = os.path.join(PROJECT_ROOT, 'data', 'synthetic')
 
 # Model paths
-MODEL_SAVE_PATH = '../src/app/'
-RESULTS_PATH = '../results/'
+MODEL_SAVE_PATH = os.path.join(PROJECT_ROOT, 'src', 'app')
+RESULTS_PATH = os.path.join(PROJECT_ROOT, 'results')
 
 # Data processing constants
 SAMPLING_RATE = 1000  # Hz
