@@ -1,0 +1,4 @@
+# Placeholder for features_batch_2.csv
+# This file will contain extracted features from batch 2 sensor data
+sample_id,feature_1,feature_2,feature_3,target
+1,0.0,0.0,0.0,0

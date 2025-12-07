@@ -1,0 +1,4 @@
+# Placeholder for model_scores.csv
+# This file will contain model evaluation scores
+model_name,accuracy,precision,recall,f1_score
+placeholder_model,0.0,0.0,0.0,0.0
