@@ -1,7 +1,7 @@
 # Mentor Presentation Guide - Orange Freshness Detection Project
 
 **Date:** December 10, 2025  
-**Status:** ✅ Complete & Production-Ready  
+**Status:** ✅ Feature uplift complete; retrain required to lock final metrics  
 **Duration:** ~15-20 minutes
 
 ---
@@ -14,8 +14,8 @@
 ### Key Points
 - **Problem:** Need to assess orange freshness without opening/damaging fruit
 - **Solution:** Optical sensor data + dual-track ML (regression + classification)
-- **Outcome:** 75.85% grade classification accuracy on unseen test set
-- **Readiness:** Production-ready architecture (data collection next)
+- **Outcome:** Legacy accuracy ~75.85%; **new 26-feature pipeline ready—retrain to update metrics (target 65–75%+ confidence)**
+- **Readiness:** Architecture & assets complete; retrain + metric refresh pending
 
 ---
 
@@ -25,7 +25,7 @@
 
 ### Talking Points
 1. **Modular Design:** 4 independent Python modules
-   - `track_a_preprocessing.py` — Feature extraction
+   - `track_a_preprocessing_v2.py` — Enhanced feature extraction (26 features)
    - `track_a_feature_selection.py` — RFE selector
    - `track_a_train_classifier.py` — Training pipeline
    - `track_a_inference.py` — Inference service
@@ -35,12 +35,11 @@
    - Testing: Batches 6-7 (completely unseen)
    - Prevents information leak from test set
 
-3. **Feature Pipeline:**
+3. **Feature Pipeline (enhanced):**
    - Raw (15 readings) → Savitzky-Golay smoothing
-   - → DCT coefficients (10) + Energy extraction
-   - → 11 engineered features
+   - → **26 engineered features** (DCT 0–9, energy, range, peak/min, gradients, entropy, interactions)
    - → StandardScaler normalization
-   - → RFE selection (11 → 5 top features)
+   - → RFE selection (26 → top ~5) for the classifier
 
 4. **Dual Tracks:**
    - **Track B (Regression):** Storage day + Folic acid prediction
@@ -75,9 +74,10 @@
 
 ## 📊 SLIDE 4: Track A - Classification Dashboard
 
-**Display:** `02_per_grade_performance.png` + `01_confusion_matrix.png`
+**Display:** `02_per_grade_performance.png` + `01_confusion_matrix.png` *(legacy metrics — refresh after retrain)*
 
-### Overall Accuracy: **75.85%** 🎯
+### Overall Accuracy (legacy): **75.85%** 🎯  
+**Next:** Retrain with enhanced features (target 65–75%+ confidence)
 
 ### Per-Grade Breakdown
 | Grade | Classification | Precision | Recall | F1 |
@@ -111,23 +111,9 @@
 **Display:** `04_feature_importance.png`
 
 ### Top 5 Selected Features (out of 11 engineered)
-1. **DCT_3** (22%) — 3rd frequency component (temporal patterns)
-2. **DCT_2** (20%) — 2nd frequency component
-3. **Mean** (18%) — Average optical signal
-4. **Energy** (16%) — Total signal energy (sum of squares)
-5. **DCT_1** (15%) — 1st frequency component
-
-### Why These Features?
-- **DCT dominates (60%):** Captures temporal degradation patterns
-- **Frequency-based:** Robust to noise and sensor variations
-- **Domain-aligned:** Matches chemometric theory of optical absorption
-- **Interpretable:** Can explain each feature physically
-
-### RFE Process
-- Started with 11 features (includes statistical summaries)
-- RFE with RandomForestClassifier eliminated 6 features
-- Kept only the 5 most informative features
-- Reduced model complexity, improved interpretability
+**Legacy top 5 (old 11-feature set):** DCT_3, DCT_2, Mean, Energy, DCT_1  
+**Upcoming:** RFE will select ~5 best out of 26 enhanced features (expect more amplitude/gradient/entropy presence).  
+*(Charts are legacy; refresh after retrain.)*
 
 ---
 
@@ -139,12 +125,13 @@
 | Component | Count | Details |
 |-----------|-------|---------|
 | **Real Samples** | 50 | Batches 1-7, different storage days |
-| **Engineered Features** | 11-12 | Savitzky-Golay + DCT + stats |
-| **Track A Samples** | 2050 | With synthetic grade labels |
+| **Engineered Features** | **26 (enhanced)** | DCT, energy, range, peak/min, gradients, entropy, interactions |
+| **Track A Samples** | 2050 | With synthetic grade labels (legacy split) |
 | **Training Set (B)** | 35 | Batches 1-5 |
 | **Test Set (B)** | 15 | Batches 6-7 (unseen) |
-| **Training Set (A)** | 1640 | 80% stratified split |
-| **Test Set (A)** | 410 | 20% stratified split |
+| **Training Set (A)** | 1640 | 80% stratified split (legacy) |
+| **Test Set (A)** | 410 | 20% stratified split (legacy) |
+| **Enhanced Features CSV** | 2050×26 | `datasets/X_features_enhanced.csv` |
 
 ### Methodology Strength: NO DATA LEAKAGE
 ✅ Batch-wise split prevents test data from influencing training  
@@ -192,10 +179,10 @@
 
 ### PHASE 1: IMMEDIATE (Days)
 ```
-✓ Finalize documentation
-✓ Archive models & code
-✓ Mentor presentation (today!)
-✓ GitHub push (feature branch)
+✓ Finalize documentation (updated for 26 features)
+✓ Generate enhanced features CSV
+✓ GitHub push (main)
+➤ Retrain Track A with enhanced features and refresh metrics/assets
 ```
 
 ### PHASE 2: SHORT-TERM (Weeks 1-4)

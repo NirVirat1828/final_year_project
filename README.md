@@ -29,184 +29,98 @@ Feature Selection (RFE → top 5 features)
 Dual-Track Regressors:
   ├─ Storage Day Model: RandomForest (batches 1-5 train → 6-7 test)
   └─ Folic Acid Model: RandomForest (batches 1-4 train → 5 hold-out)
-        ↓
-Validation & Explainability (SHAP)
-```
+        # Orange Freshness Detection System
 
----
+        Dual-track ML system for non-destructive orange freshness assessment, now upgraded with a richer feature set (11 → 26) for stronger grade classification confidence.
 
-## Current Performance Metrics
+        ---
+        ## Highlights (Current State)
+        - **Feature uplift:** Added 15 new amplitude/temporal/complexity/interaction features; enhanced dataset saved as `datasets/X_features_enhanced.csv`.
+        - **Tracks:**
+          - **Track A (Classification):** Freshness grade A/B/C/D (stacking ensemble). Expected confidence after retrain: **65–75%+**.
+          - **Track B (Regression):** Storage day + folic acid µM (RandomForest regressors; legacy performance retained).
+        - **Artifacts:** Inference scripts, API, dashboard, presentation assets, and enhanced preprocessing (`track_a_preprocessing_v2.py`).
 
-### Storage Day Regression
-- **Dataset**: Test on batches 6-7 (unseen)
-- **RMSE**: 1.65 days
-- **MAE**: 1.14 days
-- **R² Score**: 0.837
+        ---
+        ## Quickstart
+        1) **Environment**
+        ```bash
+        python3 -m venv venv
+        source venv/bin/activate
+        pip install -U numpy pandas scikit-learn joblib matplotlib seaborn shap jupyter
+        ```
 
-### Folic Acid Regression
-- **Dataset**: Hold-out batch 5
-- **RMSE**: 0.79 µM
-- **MAE**: 0.73 µM
-- **R² Score**: 0.9997
+        2) **Use enhanced features (already generated)**
+        ```bash
+        ls datasets/X_features_enhanced.csv  # 2050 × 26 features
+        # If needed, regenerate:
+        python generate_enhanced_features.py
+        ```
 
-### Top Features (by SHAP)
-1. DCT_3
-2. DCT_2
-3. Mean
-4. Energy
-5. DCT_1
+        3) **Retrain Track A (classification)**
+        - Load `datasets/X_features_enhanced.csv` + `datasets/y_targets.csv`.
+        - Scale → RFE (select ~5 of 26) → train stacking ensemble (RF + GB + SVM, meta RF).
+        - Save to `models/track_a_v2/`: `scaler.pkl`, `rfe_selector.pkl`, `stacking_model.pkl`, `metadata.json`.
 
----
+        4) **Run inference demo**
+        ```bash
+        source venv/bin/activate
+        python3 track_a_inference.py
+        ```
 
-## File Structure
+        5) **Serve / visualize**
+        ```bash
+        python3 inference_api.py           # REST API
+        python3 presentation_dashboard.py  # Streamlit dashboard
+        ```
 
-```
-orange_freshness_detection/
-├── notebooks/
-│   ├── Preprocessing_and_Features.ipynb      # Data ingestion & feature engineering
-│   ├── Dual_Track_Modelling.ipynb            # Model training (day + folic)
-│   ├── Validation_and_Reporting.ipynb        # Evaluation & SHAP
-│   └── generate_data.py                      # Synthetic data generation
-├── models/
-│   ├── model_day_rf.pkl                      # Trained day regression model
-│   ├── model_folic_rf.pkl                    # Trained folic acid regression model
-│   ├── scaler.pkl                            # StandardScaler for features
-│   └── selected_features.pkl                 # RFE-selected feature indices
-├── datasets/
-│   ├── X_features.csv                        # 50 samples × 11 features
-│   ├── y_targets.csv                         # 50 samples × targets (day, folic acid)
-│   ├── master_all_batches.csv                # Training data (batches 1-5)
-│   ├── key.csv                               # Folic acid labels & metadata
-│   ├── synthetic_augmented_data.csv          # Augmented training data
-│   └── test_dataset_blind/                   # Blind test set (batches 6-7)
-│       ├── batch6_day*.csv                   # 8 samples from batch 6
-│       └── batch7_day*.csv                   # 7 samples from batch 7
-├── FINAL_REPORT_AND_RECOMMENDATIONS.md       # Production roadmap
-├── PROJECT_FIXES_SUMMARY.md                  # Implementation details
-├── SYNTHETIC_DATA_STRATEGIES.md              # Data augmentation approaches
-└── README.md                                 # This file
-```
+        ---
+        ## Data & Splits (legacy baseline)
+        - **Features (legacy):** `datasets/X_features.csv` — 11 engineered features
+        - **Features (enhanced):** `datasets/X_features_enhanced.csv` — 26 engineered features
+        - **Targets:** `datasets/y_targets.csv` (batch, day, true_conc_uM)
+        - **Blind test CSVs:** `datasets/test_dataset_blind/` (batches 6–7)
 
----
+        **Baseline splits (regression):**
+        - Train: batches 1–5 (35 samples) | Test: batches 6–7 (15 samples)
+        - Folic acid: train batches 1–4, hold-out batch 5 (~7 samples)
 
-## Usage
+        **Classification:** stratified 80/20 split over 2050 samples (legacy); retrain recommended with enhanced features.
 
-### 1. Data Preprocessing
-```bash
-cd notebooks
-jupyter notebook Preprocessing_and_Features.ipynb
-# Outputs: X_features.csv (50×11), y_targets.csv (50×2)
-```
+        ---
+        ## Repository Map
+        ```
+        notebooks/                # Preprocessing, modelling, validation notebooks
+        models/                   # Saved models (legacy Track A/B)
+        datasets/                 # Features/targets + blind test CSVs + enhanced features
+        track_a_preprocessing_v2.py  # Enhanced feature extractor (26 features)
+        track_a_inference.py         # Inference demo for Track A
+        track_a_train_classifier.py   # Training pipeline (legacy)
+        generate_enhanced_features.py # Builds enhanced feature CSV
+        inference_api.py, presentation_dashboard.py  # Serving & dashboard
+        FINAL_REPORT.md              # Final handoff summary
+        PRESENTATION_GUIDE.md        # Slide-by-slide script (updated)
+        ```
 
-### 2. Model Training
-```bash
-jupyter notebook Dual_Track_Modelling.ipynb
-# Trains:
-#  - Day model on batches 1-5
-#  - Folic acid model on batches 1-4
-# Saves: .pkl files to models/ folder
-```
+        ---
+        ## Current Performance (legacy baseline)
+        - **Track B (regression):** R² day = 0.837, MAE 1.14 days; folic acid R² = 0.9997 (hold-out batch 5).
+        - **Track A (classification):** Legacy accuracy ~75.85% on stratified split; confidence low (~44% on sample). Expected uplift after retraining with enhanced features.
 
-### 3. Validation & Reporting
-```bash
-jupyter notebook Validation_and_Reporting.ipynb
-# Evaluates:
-#  - Day model on batches 6-7 (unseen)
-#  - Folic acid model on batch 5 (hold-out)
-# Generates: plots, metrics, SHAP explanations
-```
+        **Next measurement needed:** Re-evaluate after retraining with `X_features_enhanced.csv` and record updated metrics (update presentation assets accordingly).
 
----
+        ---
+        ## Testing & Validation Checklist
+        - [ ] Retrain Track A using enhanced features
+        - [ ] Evaluate on held-out batches (6–7) and record accuracy/F1/confusion matrix
+        - [ ] Calibrate probabilities (Platt / isotonic) for production confidence
+        - [ ] Refresh presentation asset captions once new metrics are available
 
-## Data Splits
+        ---
+        ## Notes
+        - Clean-up performed: removed `.DS_Store`, `__pycache__/`.
+        - Keep `venv/` local-only (do not commit); already ignored by `.gitignore`.
 
-### Storage Day Model
-| Split | Batches | Samples | Purpose |
-|-------|---------|---------|---------|
+        ---
+        ## Support
 | Train | 1-5 | 35 | Model learning |
-| Test | 6-7 | 15 | Generalization assessment |
-
-### Folic Acid Model
-| Split | Batches | Samples | Purpose |
-|-------|---------|---------|---------|
-| Train | 1-4 | ~28 | Model learning |
-| Hold-out | 5 | ~7 | Validation |
-
----
-
-## Dependencies
-
-```
-Python 3.8+
-pandas
-numpy
-scikit-learn
-matplotlib
-seaborn
-shap
-jupyter
-```
-
----
-
-## Performance Analysis
-
-### What Works Well ✅
-- Proper batch-wise train/test split (no leakage)
-- Clean feature extraction pipeline
-- Strong day regression on unseen batches (R² 0.837)
-- Excellent folic acid fit on hold-out (R² 0.9997)
-- Interpretable SHAP explanations
-
-### Current Limitations ⚠️
-- Small training set (35-40 samples) limits generalization
-- Folic acid validated on single batch only
-- High-dimensional raw input (3700+ → 11 features)
-- Batch-identity effects may confound freshness signals
-
----
-
-## Recommendations for Production
-
-### Immediate (Weeks 1-2)
-1. **Data Collection**: Target 150-200 samples from 15+ batches
-2. **Cross-Validation**: Implement Leave-One-Batch-Out CV
-3. **Documentation**: Create model card and deployment guide
-
-### Short-term (Months 1-3)
-4. **Feature Refinement**: Validate top 5 SHAP features on larger dataset
-5. **Model Optimization**: Tune Random Forest hyperparameters
-6. **Uncertainty**: Add prediction confidence intervals
-
-### Medium-term (Months 3-6)
-7. **Ensemble Methods**: Benchmark against XGBoost, LightGBM
-8. **API Layer**: Deploy inference service
-9. **Monitoring**: Set up performance tracking & retraining triggers
-
----
-
-## Key Learnings
-
-| Issue | Fix | Impact |
-|-------|-----|--------|
-| Data leakage | Batch-wise split | Realistic metrics |
-| Missing test data | Integrated blind set | 43% more samples |
-| Ambiguous targets | Dual regression (day + folic) | Clear task definition |
-| No explainability | Added SHAP plots | Feature interpretability |
-
----
-
-## References & Further Reading
-
-- **FINAL_REPORT_AND_RECOMMENDATIONS.md**: Full roadmap for scaling
-- **PROJECT_FIXES_SUMMARY.md**: Technical implementation details
-- **SYNTHETIC_DATA_STRATEGIES.md**: Data augmentation rationale
-
----
-
-## Contact & Support
-
-For questions or to report issues, contact the project maintainer.
-
-**Last Updated**: December 8, 2025  
-**Status**: Production-Ready Architecture (Data-Limited Performance)
