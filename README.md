@@ -99,7 +99,14 @@ Dual-Track Regressors:
         src/preprocessing/generate_enhanced_features.py # Builds enhanced feature CSV
         src/inference/inference_api.py, src/visualization/presentation_dashboard.py  # Serving & dashboard
         docs/reports/              # Project reports and writeups (moved from root)
+        frontend/                 # React dashboard for the project presentation layer
         ```
+
+---
+## React Frontend
+- The React UI lives in [frontend](frontend).
+- Start it with `cd frontend`, `npm install`, then `npm run dev`.
+- Build it with `npm run build`.
 
         ---
         ## Current Performance (legacy baseline)
