@@ -53,8 +53,8 @@ Dual-Track Regressors:
         2) **Use enhanced features (already generated)**
         ```bash
         ls datasets/X_features_enhanced.csv  # 2050 × 26 features
-        # If needed, regenerate:
-        python generate_enhanced_features.py
+        # If needed, regenerate (run from project root):
+        python -m src.preprocessing.generate_enhanced_features
         ```
 
         3) **Retrain Track A (classification)**
@@ -65,13 +65,13 @@ Dual-Track Regressors:
         4) **Run inference demo**
         ```bash
         source venv/bin/activate
-        python3 track_a_inference.py
+        python -m src.inference.track_a_inference
         ```
 
         5) **Serve / visualize**
         ```bash
-        python3 inference_api.py           # REST API
-        python3 presentation_dashboard.py  # Streamlit dashboard
+        python -m src.inference.inference_api           # REST API
+        python -m src.visualization.presentation_dashboard  # Streamlit dashboard
         ```
 
         ---
@@ -93,13 +93,12 @@ Dual-Track Regressors:
         notebooks/                # Preprocessing, modelling, validation notebooks
         models/                   # Saved models (legacy Track A/B)
         datasets/                 # Features/targets + blind test CSVs + enhanced features
-        track_a_preprocessing_v2.py  # Enhanced feature extractor (26 features)
-        track_a_inference.py         # Inference demo for Track A
-        track_a_train_classifier.py   # Training pipeline (legacy)
-        generate_enhanced_features.py # Builds enhanced feature CSV
-        inference_api.py, presentation_dashboard.py  # Serving & dashboard
-        FINAL_REPORT.md              # Final handoff summary
-        PRESENTATION_GUIDE.md        # Slide-by-slide script (updated)
+        src/preprocessing/track_a_preprocessing_v2.py  # Enhanced feature extractor (26 features)
+        src/inference/track_a_inference.py            # Inference demo for Track A
+        src/training/track_a_train_classifier.py      # Training pipeline (legacy)
+        src/preprocessing/generate_enhanced_features.py # Builds enhanced feature CSV
+        src/inference/inference_api.py, src/visualization/presentation_dashboard.py  # Serving & dashboard
+        docs/reports/              # Project reports and writeups (moved from root)
         ```
 
         ---
