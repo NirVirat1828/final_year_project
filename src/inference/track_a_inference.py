@@ -17,7 +17,7 @@ import pandas as pd
 from pathlib import Path
 import joblib
 
-from track_a_preprocessing import TrackAPreprocessor
+from src.preprocessing.track_a_preprocessing import TrackAPreprocessor
 
 
 class TrackAInference:

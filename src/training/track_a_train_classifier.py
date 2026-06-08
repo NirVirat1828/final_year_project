@@ -31,8 +31,8 @@ from sklearn.metrics import (
 )
 import joblib
 
-from track_a_preprocessing import TrackAPreprocessor
-from track_a_feature_selection import TrackAFeatureSelector
+from src.preprocessing.track_a_preprocessing import TrackAPreprocessor
+from src.preprocessing.track_a_feature_selection import TrackAFeatureSelector
 
 
 def load_or_generate_dataset(data_path='datasets/X_features.csv', targets_path='datasets/y_targets.csv'):
