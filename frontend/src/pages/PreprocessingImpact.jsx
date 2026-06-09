@@ -12,6 +12,21 @@ const impactData = [
   { metric: 'F1 Score', Raw: 76.8, Advanced: 74.8, Engineered: 73.4 }
 ];
 
+const insightsMap = {
+  'Raw Data': [
+    { type: 'Key Finding', color: 'var(--primary-orange)', text: 'Raw preprocessing outperformed advanced preprocessing across all major metrics.' },
+    { type: 'Observation', color: 'var(--success-green)', text: 'Baseline raw sensor data provides the highest linear separability without introduced noise.' }
+  ],
+  'Advanced Processing': [
+    { type: 'Key Finding', color: 'var(--primary-orange)', text: 'Advanced preprocessing reduced accuracy by 2.93% compared to the raw baseline.' },
+    { type: 'Observation', color: 'var(--success-green)', text: 'Techniques like PCA and scaling distorted the natural clusters in the dataset.' }
+  ],
+  'Feature Engineering': [
+    { type: 'Key Finding', color: 'var(--primary-orange)', text: 'Feature engineering yielded the lowest overall performance across all models.' },
+    { type: 'Observation', color: 'var(--success-green)', text: 'Feature engineering introduced noise, reducing the F1 score by ~3.4% compared to raw sensor data.' }
+  ]
+};
+
 export default function PreprocessingImpact() {
   const [selectedPipeline, setSelectedPipeline] = useState(pipelineOptions[0]);
 
@@ -43,9 +58,16 @@ export default function PreprocessingImpact() {
                 <YAxis domain={[60, 85]} tick={{ fill: 'var(--text-secondary)' }} axisLine={false} tickLine={false} />
                 <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: 'var(--shadow-md)' }} />
                 <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                <Bar dataKey="Raw" fill="var(--primary-orange)" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Advanced" fill="var(--success-green)" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Engineered" fill="var(--dark-slate-light)" radius={[4, 4, 0, 0]} />
+                
+                {/* Always show Baseline (Raw) for comparison, unless Raw is selected then only show Raw */}
+                <Bar dataKey="Raw" fill="var(--primary-orange)" radius={[4, 4, 0, 0]} name="Baseline (Raw)" />
+                
+                {selectedPipeline === 'Advanced Processing' && (
+                  <Bar dataKey="Advanced" fill="var(--success-green)" radius={[4, 4, 0, 0]} name="Advanced Processing" />
+                )}
+                {selectedPipeline === 'Feature Engineering' && (
+                  <Bar dataKey="Engineered" fill="var(--dark-slate-light)" radius={[4, 4, 0, 0]} name="Feature Engineering" />
+                )}
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -53,6 +75,7 @@ export default function PreprocessingImpact() {
 
         <section className="flex flex-col gap-6">
           <motion.div 
+            key={selectedPipeline} // Force re-animation when selection changes
             className="glass-card bg-gradient-dark" 
             style={{ color: 'white', flex: 1 }}
             initial={{ x: 20, opacity: 0 }}
@@ -63,14 +86,12 @@ export default function PreprocessingImpact() {
               <h2 className="text-h2 text-white" style={{ fontSize: '1.25rem' }}>Research Insights</h2>
             </div>
             <div className="flex flex-col gap-4">
-              <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.1)', borderRadius: 'var(--radius-md)' }}>
-                <p style={{ fontWeight: 600, color: 'var(--primary-orange)', marginBottom: '0.25rem' }}>Key Finding</p>
-                <p style={{ fontSize: '0.875rem', lineHeight: 1.6 }}>Raw preprocessing outperformed advanced preprocessing across all major metrics.</p>
-              </div>
-              <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.1)', borderRadius: 'var(--radius-md)' }}>
-                <p style={{ fontWeight: 600, color: 'var(--success-green)', marginBottom: '0.25rem' }}>Observation</p>
-                <p style={{ fontSize: '0.875rem', lineHeight: 1.6 }}>Feature engineering introduced noise, reducing the F1 score by ~3.4% compared to raw sensor data.</p>
-              </div>
+              {insightsMap[selectedPipeline].map((insight, idx) => (
+                <div key={idx} style={{ padding: '1rem', background: 'rgba(255,255,255,0.1)', borderRadius: 'var(--radius-md)' }}>
+                  <p style={{ fontWeight: 600, color: insight.color, marginBottom: '0.25rem' }}>{insight.type}</p>
+                  <p style={{ fontSize: '0.875rem', lineHeight: 1.6 }}>{insight.text}</p>
+                </div>
+              ))}
             </div>
           </motion.div>
         </section>
