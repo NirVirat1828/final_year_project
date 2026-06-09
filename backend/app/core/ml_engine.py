@@ -14,6 +14,24 @@ def _load_serialized_object(file_path: Path) -> Any:
     return joblib.load(file_path)
 
 
+def _resolve_models_dir(models_dir: Union[str, Path] | None = None) -> Path:
+    if models_dir is not None:
+        return Path(models_dir)
+
+    project_root = Path(__file__).resolve().parents[3]
+    candidate_dirs = (
+        project_root / "model" / "models",
+        project_root / "backend" / "models",
+        project_root / "models",
+    )
+
+    for candidate_dir in candidate_dirs:
+        if (candidate_dir / "model_day_rf.pkl").exists():
+            return candidate_dir
+
+    return candidate_dirs[0]
+
+
 class OrangeFreshnessPredictor:
     _instance: "OrangeFreshnessPredictor | None" = None
     _lock = threading.Lock()
@@ -30,8 +48,7 @@ class OrangeFreshnessPredictor:
         if self.__class__._initialized:
             return
 
-        base_dir = Path(models_dir) if models_dir is not None else Path(__file__).resolve().parents[2] / "models"
-        self.models_dir = base_dir
+        self.models_dir = _resolve_models_dir(models_dir)
 
         day_model_path = self.models_dir / "model_day_rf.pkl"
         folic_model_path = self.models_dir / "model_folic_rf.pkl"

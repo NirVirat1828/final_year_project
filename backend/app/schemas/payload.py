@@ -2,14 +2,15 @@ from __future__ import annotations
 
 from typing import List
 
-from pydantic import BaseModel, Field, StrictStr, validator
+from pydantic import BaseModel, ConfigDict, Field, StrictStr, validator
 
 
 class _StrictBaseModel(BaseModel):
-    class Config:
-        extra = "forbid"
-        anystr_strip_whitespace = True
-        validate_assignment = True
+    model_config = ConfigDict(
+        extra="forbid",
+        str_strip_whitespace=True,
+        validate_assignment=True,
+    )
 
 
 class InferenceRequest(_StrictBaseModel):
