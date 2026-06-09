@@ -1,6 +1,30 @@
+import { useState } from 'react'
+
+import InferenceForm from './components/InferenceForm'
+import ResultsDashboard from './components/ResultsDashboard'
+import { analyzeBatch } from './api/inferenceApi'
 import { datasetItems, keyPaths, projectFacts, trackCards, workflowStages } from './data/projectData'
 
 function App() {
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [predictionResults, setPredictionResults] = useState(null)
+
+  const handleInferenceSubmit = async (payload) => {
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const data = await analyzeBatch(payload)
+      setPredictionResults(data)
+    } catch (submissionError) {
+      setPredictionResults(null)
+      setError(submissionError instanceof Error ? submissionError.message : 'Unable to analyze batch')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   return (
     <div className="app-shell">
       <main className="dashboard">
@@ -28,8 +52,28 @@ function App() {
               </a>
             </div>
           </div>
+        </section>
 
-          
+        <section className="section" id="analyze">
+          <div className="section-heading">
+            <p className="eyebrow">Interactive inference</p>
+            <h2>Connect the sensor form to the backend</h2>
+          </div>
+
+          {isLoading ? (
+            <div className="card inference-status" role="status" aria-live="polite">
+              Analyzing batch... please wait.
+            </div>
+          ) : null}
+
+          {error ? (
+            <div className="card inference-error" role="alert">
+              {error}
+            </div>
+          ) : null}
+
+          <InferenceForm onSubmit={handleInferenceSubmit} />
+          <ResultsDashboard resultsData={predictionResults} />
         </section>
 
         <section className="section" id="pipeline">
@@ -96,8 +140,6 @@ function App() {
             </div>
           </article>
         </section>
-
-        
       </main>
     </div>
   )
