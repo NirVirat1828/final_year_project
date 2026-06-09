@@ -5,14 +5,12 @@ import DatasetExplorer from './pages/DatasetExplorer';
 import TournamentArena from './pages/TournamentArena';
 import LivePrediction from './pages/LivePrediction';
 import ModelBattleArena from './pages/ModelBattleArena';
-
-// Placeholder Pages (To be created)
-const PreprocessingImpact = () => <div className="glass-card"><h1>Preprocessing Impact Analysis</h1><p>Coming soon...</p></div>;
-const ClassificationTrack = () => <div className="glass-card"><h1>Classification Track</h1><p>Coming soon...</p></div>;
-const RegressionTrack = () => <div className="glass-card"><h1>Regression Track</h1><p>Coming soon...</p></div>;
-const FeatureInsights = () => <div className="glass-card"><h1>Feature Insights</h1><p>Coming soon...</p></div>;
-const ResearchFindings = () => <div className="glass-card"><h1>Research Findings</h1><p>Coming soon...</p></div>;
-const ReportGenerator = () => <div className="glass-card"><h1>Report Generator</h1><p>Coming soon...</p></div>;
+import PreprocessingImpact from './pages/PreprocessingImpact';
+import ClassificationTrack from './pages/ClassificationTrack';
+import RegressionTrack from './pages/RegressionTrack';
+import FeatureInsights from './pages/FeatureInsights';
+import ResearchFindings from './pages/ResearchFindings';
+import ReportGenerator from './pages/ReportGenerator';
 
 function App() {
   return (
