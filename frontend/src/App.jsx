@@ -1,148 +1,37 @@
-import { useState } from 'react'
+import { Routes, Route } from 'react-router-dom';
+import AppLayout from './components/AppLayout';
+import ExecutiveDashboard from './pages/ExecutiveDashboard';
+import DatasetExplorer from './pages/DatasetExplorer';
+import TournamentArena from './pages/TournamentArena';
+import LivePrediction from './pages/LivePrediction';
+import ModelBattleArena from './pages/ModelBattleArena';
 
-import InferenceForm from './components/InferenceForm'
-import ResultsDashboard from './components/ResultsDashboard'
-import { analyzeBatch } from './api/inferenceApi'
-import { datasetItems, keyPaths, projectFacts, trackCards, workflowStages } from './data/projectData'
+// Placeholder Pages (To be created)
+const PreprocessingImpact = () => <div className="glass-card"><h1>Preprocessing Impact Analysis</h1><p>Coming soon...</p></div>;
+const ClassificationTrack = () => <div className="glass-card"><h1>Classification Track</h1><p>Coming soon...</p></div>;
+const RegressionTrack = () => <div className="glass-card"><h1>Regression Track</h1><p>Coming soon...</p></div>;
+const FeatureInsights = () => <div className="glass-card"><h1>Feature Insights</h1><p>Coming soon...</p></div>;
+const ResearchFindings = () => <div className="glass-card"><h1>Research Findings</h1><p>Coming soon...</p></div>;
+const ReportGenerator = () => <div className="glass-card"><h1>Report Generator</h1><p>Coming soon...</p></div>;
 
 function App() {
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [predictionResults, setPredictionResults] = useState(null)
-
-  const handleInferenceSubmit = async (payload) => {
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      const data = await analyzeBatch(payload)
-      setPredictionResults(data)
-    } catch (submissionError) {
-      setPredictionResults(null)
-      setError(submissionError instanceof Error ? submissionError.message : 'Unable to analyze batch')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
   return (
-    <div className="app-shell">
-      <main className="dashboard">
-        <section className="hero">
-          <div className="hero-copy card">
-            <p className="eyebrow">Project frontend</p>
-            <h1>Orange freshness detection system</h1>
-            <p className="hero-text">
-              This UI is a clean presentation layer for the actual project. It shows what the
-              system does, how the data flows, and where the code and reports live.
-            </p>
-
-            <ul className="fact-list">
-              {projectFacts.map((fact) => (
-                <li key={fact}>{fact}</li>
-              ))}
-            </ul>
-
-            <div className="hero-actions">
-              <a className="primary-btn" href="#pipeline">
-                See the pipeline
-              </a>
-              <a className="secondary-btn" href="#files">
-                Open project map
-              </a>
-            </div>
-          </div>
-        </section>
-
-        <section className="section" id="analyze">
-          <div className="section-heading">
-            <p className="eyebrow">Interactive inference</p>
-            <h2>Connect the sensor form to the backend</h2>
-          </div>
-
-          {isLoading ? (
-            <div className="card inference-status" role="status" aria-live="polite">
-              Analyzing batch... please wait.
-            </div>
-          ) : null}
-
-          {error ? (
-            <div className="card inference-error" role="alert">
-              {error}
-            </div>
-          ) : null}
-
-          <InferenceForm onSubmit={handleInferenceSubmit} />
-          <ResultsDashboard resultsData={predictionResults} />
-        </section>
-
-        <section className="section" id="pipeline">
-          <div className="section-heading">
-            <p className="eyebrow">Pipeline</p>
-            <h2>From sensor readings to project outputs</h2>
-          </div>
-
-          <div className="timeline">
-            {workflowStages.map((stage, index) => (
-              <article className="timeline-step card" key={stage.title}>
-                <div className="step-index">0{index + 1}</div>
-                <h3>{stage.title}</h3>
-                <p>{stage.text}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="section">
-          <div className="section-heading">
-            <p className="eyebrow">Outputs</p>
-            <h2>The project is built around three practical predictions</h2>
-          </div>
-
-          <div className="track-grid">
-            {trackCards.map((track) => (
-              <article className="track-card card" key={track.title}>
-                <p className="track-label">{track.title}</p>
-                <h3>{track.subtitle}</h3>
-                <p>{track.detail}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="section split-grid" id="files">
-          <article className="card dataset-card">
-            <div className="section-heading compact">
-              <p className="eyebrow">Dataset map</p>
-              <h2>Where the inputs live</h2>
-            </div>
-
-            <div className="list-stack">
-              {datasetItems.map((item) => (
-                <div className="list-item" key={item.path}>
-                  <code>{item.path}</code>
-                  <p>{item.note}</p>
-                </div>
-              ))}
-            </div>
-          </article>
-
-          <article className="card artifact-card">
-            <div className="section-heading compact">
-              <p className="eyebrow">Repository scaffold</p>
-              <h2>Code and reports are separated cleanly</h2>
-            </div>
-
-            <div className="artifact-chips">
-              {keyPaths.map((item) => (
-                <span key={item}>{item}</span>
-              ))}
-            </div>
-          </article>
-        </section>
-      </main>
-    </div>
-  )
+    <Routes>
+      <Route path="/" element={<AppLayout />}>
+        <Route index element={<ExecutiveDashboard />} />
+        <Route path="dataset" element={<DatasetExplorer />} />
+        <Route path="tournament" element={<TournamentArena />} />
+        <Route path="battle" element={<ModelBattleArena />} />
+        <Route path="impact" element={<PreprocessingImpact />} />
+        <Route path="classification" element={<ClassificationTrack />} />
+        <Route path="regression" element={<RegressionTrack />} />
+        <Route path="features" element={<FeatureInsights />} />
+        <Route path="prediction" element={<LivePrediction />} />
+        <Route path="research" element={<ResearchFindings />} />
+        <Route path="report" element={<ReportGenerator />} />
+      </Route>
+    </Routes>
+  );
 }
 
-export default App
+export default App;
