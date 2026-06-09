@@ -1,4 +1,4 @@
-*.pkl
+
 synthetic_augmented_data.csv
 .DS_Store
 __pycache__/
