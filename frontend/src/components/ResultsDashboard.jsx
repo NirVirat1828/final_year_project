@@ -45,6 +45,14 @@ function formatConfidenceInterval(confidenceInterval) {
   return `${Number(lower).toFixed(2)} - ${Number(upper).toFixed(2)} days`
 }
 
+function formatConfidenceScore(confidenceScorePercent) {
+  if (confidenceScorePercent == null) {
+    return 'N/A'
+  }
+
+  return `${Number(confidenceScorePercent).toFixed(0)}%`
+}
+
 export default function ResultsDashboard({ resultsData }) {
   if (!resultsData) {
     return null
@@ -102,6 +110,11 @@ export default function ResultsDashboard({ resultsData }) {
             </div>
 
             <div className="metric-row">
+              <span>Confidence Score</span>
+              <strong>{formatConfidenceScore(resultsData?.logistics?.confidence_score_percent)}</strong>
+            </div>
+
+            <div className="metric-row">
               <span>Estimated Age</span>
               <strong>{resultsData?.logistics?.estimated_age_days ?? 'N/A'} days</strong>
             </div>
@@ -112,6 +125,25 @@ export default function ResultsDashboard({ resultsData }) {
             </div>
           </section>
         </div>
+
+        <section className="diagnostics-section" aria-labelledby="system-diagnostics-title">
+          <div className="section-heading compact diagnostics-heading">
+            <p className="section-kicker diagnostics-kicker">System Diagnostics</p>
+            <h3 id="system-diagnostics-title">Engineering review panel</h3>
+          </div>
+
+          <div className="diagnostics-alert" role="alert">
+            <strong className="diagnostics-alert-title">
+              ⚠️ Engineering Note: Folic Acid Prediction Anomaly
+            </strong>
+            <p>
+              The Folic Acid random forest model achieved an R² score of 0.9997. While
+              mathematically perfect, in biological electrochemical datasets, this indicates
+              potential sensor overfitting or data leakage. Independent HPLC lab validation is
+              strictly required before commercial deployment.
+            </p>
+          </div>
+        </section>
       </article>
     </section>
   )

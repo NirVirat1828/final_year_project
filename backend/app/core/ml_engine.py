@@ -1,79 +1,17 @@
 from __future__ import annotations
 
-import pickle
 import threading
 from pathlib import Path
 from typing import Any, Union
 
+import joblib
 import numpy as np
-import pandas as pd
-from sklearn.preprocessing import StandardScaler
-
-try:
-    import joblib
-except ImportError:  # pragma: no cover
-    joblib = None
-
-
-class _FallbackModel:
-    def __init__(self, scale: float, offset: float) -> None:
-        self.scale = scale
-        self.offset = offset
-
-    def predict(self, X_features: Any) -> np.ndarray:
-        X_array = np.asarray(X_features, dtype=np.float32)
-        if X_array.ndim == 1:
-            X_array = X_array.reshape(1, -1)
-
-        mean_signal = np.mean(X_array, axis=1)
-        return np.asarray(mean_signal * self.scale + self.offset, dtype=np.float32)
 
 
 def _load_serialized_object(file_path: Path) -> Any:
     if not file_path.exists():
         raise FileNotFoundError(f"Required model artifact not found: {file_path}")
-
-    if joblib is not None:
-        try:
-            return joblib.load(file_path)
-        except Exception:
-            pass
-
-    with file_path.open("rb") as file_handle:
-        return pickle.load(file_handle)
-
-
-class OptimizedPreprocessor:
-    __slots__ = ("scaler",)
-
-    def __init__(self, scaler: StandardScaler | None = None) -> None:
-        self.scaler = scaler if scaler is not None else StandardScaler()
-
-    @classmethod
-    def from_file(cls, scaler_path: Path) -> "OptimizedPreprocessor":
-        scaler = _load_serialized_object(scaler_path)
-        return cls(scaler=scaler)
-
-    @staticmethod
-    def _to_array(X_features: Any) -> np.ndarray:
-        if isinstance(X_features, pd.DataFrame):
-            array = X_features.to_numpy(dtype=np.float32, copy=False)
-        else:
-            array = np.asarray(X_features, dtype=np.float32)
-
-        if array.ndim == 1:
-            array = array.reshape(1, -1)
-
-        if array.ndim != 2:
-            raise ValueError("X_features must be a 2D array-like structure.")
-
-        return array
-
-    def transform(self, X_features: Any) -> np.ndarray:
-        return self.scaler.transform(self._to_array(X_features))
-
-    def fit_transform(self, X_features: Any) -> np.ndarray:
-        return self.scaler.fit_transform(self._to_array(X_features))
+    return joblib.load(file_path)
 
 
 class OrangeFreshnessPredictor:
@@ -92,34 +30,36 @@ class OrangeFreshnessPredictor:
         if self.__class__._initialized:
             return
 
-        base_dir = Path(models_dir) if models_dir is not None else Path(__file__).resolve().parents[3] / "models"
+        base_dir = Path(models_dir) if models_dir is not None else Path(__file__).resolve().parents[2] / "models"
         self.models_dir = base_dir
 
         day_model_path = self.models_dir / "model_day_rf.pkl"
         folic_model_path = self.models_dir / "model_folic_rf.pkl"
         scaler_path = self.models_dir / "scaler.pkl"
 
-        if day_model_path.exists() and folic_model_path.exists() and scaler_path.exists():
-            self.day_model = _load_serialized_object(day_model_path)
-            self.folic_model = _load_serialized_object(folic_model_path)
-            self.preprocessor = OptimizedPreprocessor.from_file(scaler_path)
-            self.using_fallback_models = False
-        else:
-            self.day_model = _FallbackModel(scale=0.002, offset=7.0)
-            self.folic_model = _FallbackModel(scale=0.45, offset=90.0)
-            self.preprocessor = OptimizedPreprocessor()
-            self.preprocessor.scaler.fit(np.zeros((1, 11), dtype=np.float32))
-            self.using_fallback_models = True
+        self.day_model = _load_serialized_object(day_model_path)
+        self.folic_model = _load_serialized_object(folic_model_path)
+        self.scaler = _load_serialized_object(scaler_path)
 
         self.__class__._initialized = True
 
-    def predict_both(self, X_features: Any) -> dict[str, np.ndarray]:
-        X_scaled = self.preprocessor.transform(X_features)
+    @staticmethod
+    def _to_2d_array(sensor_readings: Any) -> np.ndarray:
+        sensor_array = np.asarray(sensor_readings, dtype=np.float32)
 
-        days_pred = self.day_model.predict(X_scaled)
-        folic_pred = self.folic_model.predict(X_scaled)
+        if sensor_array.ndim == 1:
+            sensor_array = sensor_array.reshape(1, -1)
 
-        return {
-            "days": days_pred,
-            "folic_acid_uM": folic_pred,
-        }
+        if sensor_array.ndim != 2:
+            raise ValueError("sensor_readings must be convertible to a 2D array.")
+
+        return sensor_array
+
+    def predict_both(self, sensor_readings: Any) -> tuple[float, float]:
+        sensor_array = self._to_2d_array(sensor_readings)
+        X_scaled = self.scaler.transform(sensor_array)
+
+        days_pred = float(np.asarray(self.day_model.predict(X_scaled), dtype=np.float32).reshape(-1)[0])
+        folic_pred = float(np.asarray(self.folic_model.predict(X_scaled), dtype=np.float32).reshape(-1)[0])
+
+        return days_pred, folic_pred

@@ -22,10 +22,7 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     monkeypatch.setattr(
         OrangeFreshnessPredictor,
         "predict_both",
-        lambda self, X_features: {
-            "days": np.array([5.0], dtype=np.float32),
-            "folic_acid_uM": np.array([120.0], dtype=np.float32),
-        },
+        lambda self, X_features: (5.0, 120.0),
     )
 
     with TestClient(app) as test_client:
@@ -55,6 +52,22 @@ def test_analyze_batch_success(client: TestClient) -> None:
     assert "results" in body
     assert "freshness_grade" in body["results"]
     assert "logistics" in body
+
+
+def test_analyze_batch_advanced_strategy_applies_penalty(client: TestClient) -> None:
+    payload = {
+        "batch_id": "batch-003",
+        "sensor_readings": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1],
+        "preprocessing_strategy": "advanced",
+        "storage_temperature_c": 4.0,
+    }
+
+    response = client.post("/api/v1/analyze-batch", json=payload)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["logistics"]["confidence_score_percent"] == 80.0
+    assert body["logistics"]["remaining_shelf_life_days"] == 11.5
 
 
 def test_analyze_batch_invalid_sensor_data(client: TestClient) -> None:

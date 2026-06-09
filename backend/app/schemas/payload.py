@@ -49,6 +49,7 @@ class InferenceResults(_StrictBaseModel):
 class InferenceLogistics(_StrictBaseModel):
     estimated_age_days: float
     remaining_shelf_life_days: float
+    confidence_score_percent: float
     confidence_interval: ConfidenceInterval
     temperature_warning: StrictStr
 

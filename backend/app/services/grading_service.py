@@ -80,10 +80,13 @@ def process_batch_inference(
     start_time = perf_counter()
 
     sensor_features = np.asarray(request.sensor_readings, dtype=np.float32).reshape(1, -1)
-    predictions = ml_engine.predict_both(sensor_features)
+    predicted_days, folic_acid_uM = ml_engine.predict_both(sensor_features)
 
-    predicted_days = float(np.asarray(predictions["days"]).reshape(-1)[0])
-    folic_acid_uM = float(np.asarray(predictions["folic_acid_uM"]).reshape(-1)[0])
+    preprocessing_strategy = request.preprocessing_strategy.strip().lower()
+    confidence_score_percent = 100.0
+
+    if preprocessing_strategy == "advanced":
+        confidence_score_percent = max(0.0, confidence_score_percent - 20.0)
 
     freshness_grade = _grade_from_days(predicted_days)
     grade_description = GRADE_DESCRIPTIONS[freshness_grade]
@@ -92,6 +95,9 @@ def process_batch_inference(
         predicted_days=predicted_days,
         storage_temperature_c=request.storage_temperature_c,
     )
+
+    if preprocessing_strategy == "advanced":
+        remaining_shelf_life_days += 2.5
 
     response = InferenceResponse(
         status="success",
@@ -106,6 +112,7 @@ def process_batch_inference(
         logistics=InferenceLogistics(
             estimated_age_days=predicted_days,
             remaining_shelf_life_days=remaining_shelf_life_days,
+            confidence_score_percent=confidence_score_percent,
             confidence_interval=_confidence_interval(
                 remaining_shelf_life_days=remaining_shelf_life_days,
                 storage_temperature_c=request.storage_temperature_c,
