@@ -1,4 +1,4 @@
-import { CheckCircle, Clock, User } from 'lucide-react';
+import { Clock, User } from 'lucide-react';
 
 export default function TopNav() {
   return (
@@ -8,14 +8,10 @@ export default function TopNav() {
       </div>
 
       <div className="top-nav-status whitespace-nowrap">
-        <div className="status-badge success whitespace-nowrap">
-          <CheckCircle size={14} />
-          Experiment: Running
-        </div>
+
 
         <div className="flex items-center gap-2">
           <Clock size={16} />
-          <span>Last Training: 2 hours ago</span>
         </div>
 
         <div className="flex items-center gap-2" style={{ paddingLeft: '1rem', borderLeft: '1px solid var(--border-color)' }}>
