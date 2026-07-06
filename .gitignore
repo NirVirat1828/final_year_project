@@ -6,3 +6,7 @@ __pycache__/
 .ipynb_checkpoints/
 *.zip
 venv/
+*.db
+data/
+backend/data/
+.venv/

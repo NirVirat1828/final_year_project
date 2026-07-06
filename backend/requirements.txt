@@ -10,3 +10,5 @@ httpx
 shap
 matplotlib
 python-multipart
+sqlalchemy
+reportlab

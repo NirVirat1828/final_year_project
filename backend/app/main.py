@@ -44,9 +44,14 @@ def _resolve_port() -> int:
     return 8000
 
 
+from app.core.logging_config import logger
+from app.database.database import engine
+from app.database import models
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Application starting up... Loading ML models.")
+    logger.info("Application starting up... Loading ML models and initializing DB.")
+    models.Base.metadata.create_all(bind=engine)
     try:
         app.state.ml_engine = OrangeFreshnessPredictor()
         logger.info("ML Engine loaded successfully.")

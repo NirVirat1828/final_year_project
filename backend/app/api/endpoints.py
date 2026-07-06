@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from time import perf_counter
 
-from fastapi import APIRouter, Depends, Request, HTTPException, File, UploadFile, Form, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, Request, HTTPException, File, UploadFile, Form, WebSocket, WebSocketDisconnect, Query
 from fastapi.responses import Response
 import numpy as np
 
@@ -41,14 +41,50 @@ def health_check() -> dict[str, str]:
     return {"status": "healthy"}
 
 
+from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
+from app.database.database import get_db
+from app.services.history_service import (
+    save_prediction,
+    get_prediction_history,
+    get_prediction_by_id,
+    delete_prediction,
+)
+from app.services.report_service import generate_prediction_report
+from app.schemas.history import PredictionHistoryResponse, PredictionHistoryListResponse
+
 @router.post("/analyze-batch", response_model=InferenceResponse)
 def analyze_batch(
     request_payload: InferenceRequest,
     ml_engine: OrangeFreshnessPredictor = Depends(get_ml_engine),
+    db: Session = Depends(get_db),
 ) -> InferenceResponse:
     logger.info(f"Prediction request received for batch_id={request_payload.batch_id}")
     try:
         response = process_batch_inference(request_payload, ml_engine)
+        
+        try:
+            record = save_prediction(
+                db=db,
+                batch_id=request_payload.batch_id,
+                request_json=request_payload.model_dump_json(),
+                response_json=response.model_dump_json(),
+                prediction_days=response.logistics.estimated_age_days,
+                freshness_grade=response.results.freshness_grade,
+                confidence=response.logistics.confidence_score_percent,
+                storage_temperature=request_payload.storage_temperature_c,
+                model_version=MODEL_VERSION,
+                latency_ms=response.processing_latency_ms
+            )
+            logger.info("Prediction Saved", extra={
+                "batch_id": request_payload.batch_id,
+                "record_id": record.id,
+                "latency": response.processing_latency_ms,
+                "model_version": MODEL_VERSION
+            })
+        except SQLAlchemyError as db_err:
+            logger.error(f"Database save failed for batch_id={request_payload.batch_id}: {db_err}")
+
         logger.info(
             "Prediction completed",
             extra={
@@ -284,3 +320,104 @@ async def websocket_live_predict(
             pass
 
 
+@router.get(
+    "/history",
+    response_model=PredictionHistoryListResponse,
+    summary="Get Prediction History",
+    description="Retrieves a paginated list of all stored predictions, ordered newest first.",
+    responses={
+        200: {"description": "Successfully retrieved prediction history"},
+        422: {"description": "Invalid page or page_size query parameters"},
+        503: {"description": "Database unavailable"}
+    }
+)
+def get_history(
+    page: int = Query(1, ge=1, description="Page number (must be >= 1)"),
+    page_size: int = Query(50, ge=1, le=100, description="Number of records per page (max 100)"),
+    db: Session = Depends(get_db)
+):
+    logger.info("History requested", extra={"page": page, "page_size": page_size})
+    try:
+        return get_prediction_history(db, page=page, page_size=page_size)
+    except SQLAlchemyError as db_err:
+        logger.error(f"Database error during history retrieval: {db_err}")
+        raise HTTPException(status_code=503, detail="Database unavailable")
+
+
+@router.get(
+    "/history/{id}",
+    response_model=PredictionHistoryResponse,
+    summary="Get Prediction by ID",
+    description="Retrieves a complete stored prediction record by its unique database ID.",
+    responses={
+        200: {"description": "Successfully retrieved the prediction record"},
+        404: {"description": "Prediction record not found or invalid history ID"},
+        503: {"description": "Database unavailable"}
+    }
+)
+def get_history_by_id(id: int, db: Session = Depends(get_db)):
+    try:
+        prediction = get_prediction_by_id(db, prediction_id=id)
+        if not prediction:
+            raise HTTPException(status_code=404, detail="Prediction not found")
+        return prediction
+    except HTTPException:
+        raise
+    except SQLAlchemyError as db_err:
+        logger.error(f"Database error retrieving prediction {id}: {db_err}")
+        raise HTTPException(status_code=503, detail="Database unavailable")
+
+
+@router.delete(
+    "/history/{id}",
+    status_code=204,
+    summary="Delete Prediction",
+    description="Deletes a specific prediction record from the database by its ID.",
+    responses={
+        204: {"description": "Prediction successfully deleted"},
+        404: {"description": "Prediction record not found or invalid history ID"},
+        503: {"description": "Database unavailable"}
+    }
+)
+def delete_history(id: int, db: Session = Depends(get_db)):
+    try:
+        success = delete_prediction(db, prediction_id=id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Prediction not found")
+        return Response(status_code=204)
+    except HTTPException:
+        raise
+    except SQLAlchemyError as db_err:
+        logger.error(f"Database error deleting prediction {id}: {db_err}")
+        raise HTTPException(status_code=503, detail="Database unavailable")
+
+
+@router.get(
+    "/history/{id}/report",
+    summary="Download Prediction Report",
+    description="Generates and returns a PDF report for a specific stored prediction record.",
+    responses={
+        200: {
+            "content": {"application/pdf": {}},
+            "description": "Returns the generated PDF report"
+        },
+        404: {"description": "Prediction record not found"},
+        500: {"description": "Report generation failed"}
+    }
+)
+def download_prediction_report(id: int, db: Session = Depends(get_db)):
+    try:
+        pdf_bytes = generate_prediction_report(prediction_id=id, db=db)
+        if pdf_bytes is None:
+            raise HTTPException(status_code=404, detail="Prediction not found")
+            
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename=prediction_report_{id}.pdf"}
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating report for prediction {id}: {e}")
+        raise HTTPException(status_code=500, detail="Report generation failed")
