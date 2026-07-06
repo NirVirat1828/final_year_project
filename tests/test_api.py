@@ -81,3 +81,72 @@ def test_analyze_batch_invalid_sensor_data(client: TestClient) -> None:
     response = client.post("/api/v1/analyze-batch", json=payload)
 
     assert response.status_code == 422
+
+
+def test_explain_prediction_success(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.api import endpoints
+    def mock_process_explanation(request, ml_engine):
+        return {
+            "prediction": {"estimated_age_days": 5.0, "folic_acid_uM": 120.0, "freshness_grade": "B"},
+            "explanation": {
+                "day_model": {
+                    "base_value": 0.0, 
+                    "top_features": [{"feature_name": "A", "shap_value": 0.5, "impact": "increase", "absolute_importance": 0.5, "rank": 1}]
+                },
+                "folic_model": {
+                    "base_value": 0.0, 
+                    "top_features": []
+                }
+            }
+        }
+    monkeypatch.setattr(endpoints, "process_explanation", mock_process_explanation)
+    
+    payload = {
+        "batch_id": "batch-explain",
+        "sensor_readings": [1.0] * 11,
+        "preprocessing_strategy": "raw",
+        "storage_temperature_c": 4.0,
+    }
+    response = client.post("/api/v1/explain", json=payload)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "success"
+    assert "explanation" in body
+    assert body["explanation"]["day_model"]["top_features"][0]["rank"] == 1
+    # Check that PredictionSummary was populated including freshness_grade
+    assert "freshness_grade" in body["prediction"]
+
+
+def test_explain_prediction_invalid_request(client: TestClient) -> None:
+    payload = {
+        "batch_id": "batch-explain",
+        "sensor_readings": [1.0] * 5, # invalid length
+    }
+    response = client.post("/api/v1/explain", json=payload)
+    assert response.status_code == 422
+
+
+def test_explain_prediction_wrong_datatype(client: TestClient) -> None:
+    payload = {
+        "batch_id": "batch-explain",
+        "sensor_readings": ["not-a-float"] * 11, # invalid datatype
+    }
+    response = client.post("/api/v1/explain", json=payload)
+    assert response.status_code == 422
+
+
+def test_explain_prediction_model_error(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.api import endpoints
+    def mock_process_explanation_error(request, ml_engine):
+        raise ValueError("Model unavailable")
+    monkeypatch.setattr(endpoints, "process_explanation", mock_process_explanation_error)
+    
+    payload = {
+        "batch_id": "batch-explain",
+        "sensor_readings": [1.0] * 11,
+        "preprocessing_strategy": "raw",
+        "storage_temperature_c": 4.0,
+    }
+    response = client.post("/api/v1/explain", json=payload)
+    assert response.status_code == 500
+    assert response.json()["detail"] == "Explanation generation failed"

@@ -18,6 +18,7 @@ import uvicorn
 from app.api.endpoints import router
 from app.core.ml_engine import OrangeFreshnessPredictor
 
+from app.core.logging_config import logger
 
 logger = logging.getLogger(__name__)
 
@@ -45,14 +46,16 @@ def _resolve_port() -> int:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    logger.info("Application starting up... Loading ML models.")
     try:
         app.state.ml_engine = OrangeFreshnessPredictor()
-        logger.info("ML engine loaded successfully")
-    except FileNotFoundError:
+        logger.info("ML Engine loaded successfully.")
+    except FileNotFoundError as e:
+        logger.error(f"Failed to load ML models: {e}")
         app.state.ml_engine = None
         logger.warning("ML engine artifacts were not found; API will start without the model")
     yield
-    logger.info("Backend shutdown complete")
+    logger.info("Application shutting down. Backend shutdown complete.")
 
 
 app = FastAPI(

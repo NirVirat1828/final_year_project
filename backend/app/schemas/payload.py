@@ -4,6 +4,8 @@ from typing import List
 
 from pydantic import BaseModel, ConfigDict, Field, StrictStr, validator
 
+from app.core.config import MODEL_VERSION
+
 
 class _StrictBaseModel(BaseModel):
     model_config = ConfigDict(
@@ -57,7 +59,42 @@ class InferenceLogistics(_StrictBaseModel):
 
 class InferenceResponse(_StrictBaseModel):
     status: StrictStr
+    model_version: StrictStr = Field(default=MODEL_VERSION, description="The active version of the ML engine.")
     batch_id: StrictStr
     processing_latency_ms: float
     results: InferenceResults
     logistics: InferenceLogistics
+
+
+class FeatureContribution(_StrictBaseModel):
+    rank: int = Field(description="The importance rank of the feature (1 is most important).")
+    feature_name: StrictStr = Field(description="The original human-readable name of the feature.")
+    shap_value: float = Field(description="The raw SHAP value indicating directional impact.")
+    absolute_importance: float = Field(description="The absolute magnitude of the SHAP value, used for ranking.")
+    impact: StrictStr = Field(description="Whether this feature increases, decreases, or has neutral impact on the prediction.")
+
+
+class ModelExplanation(_StrictBaseModel):
+    base_value: float = Field(default=0.0, description="The expected value (base value) of the SHAP explainer before feature contributions.")
+    top_features: List[FeatureContribution] = Field(description="The top contributing features ordered by absolute importance.")
+
+
+class PredictionSummary(_StrictBaseModel):
+    estimated_age_days: float = Field(description="Predicted storage age of the orange in days.")
+    folic_acid_uM: float = Field(description="Predicted folic acid concentration in micromolar (uM).")
+    freshness_grade: StrictStr = Field(description="The assigned categorical freshness grade (e.g., A, B, C, Reject).")
+
+
+class ExplanationPayload(_StrictBaseModel):
+    day_model: ModelExplanation = Field(description="Explanation mapping for the storage age prediction model.")
+    folic_model: ModelExplanation = Field(description="Explanation mapping for the folic acid prediction model.")
+
+
+class ExplainResponse(_StrictBaseModel):
+    api_version: StrictStr = Field(default="v1", description="API version of the response.")
+    model_version: StrictStr = Field(default=MODEL_VERSION, description="The active version of the ML engine.")
+    status: StrictStr = Field(description="Success or failure status.")
+    batch_id: StrictStr = Field(description="The unique identifier for the batch of oranges.")
+    processing_latency_ms: float = Field(description="Total latency in milliseconds for preprocessing, inference, and SHAP computation.")
+    prediction: PredictionSummary = Field(description="The standard freshness predictions and grading.")
+    explanation: ExplanationPayload = Field(description="Detailed SHAP explanations detailing feature impacts.")
