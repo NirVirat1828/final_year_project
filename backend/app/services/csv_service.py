@@ -155,6 +155,7 @@ def process_csv_batch(
 
         predictions_list.append({
             "sample_index": int(idx),
+            "sensor_readings": [float(val) for val in sensor_readings],
             "results": {
                 "freshness_grade": freshness_grade,
                 "grade_description": grade_description,

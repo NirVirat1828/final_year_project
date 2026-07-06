@@ -2,23 +2,23 @@ import { motion } from 'framer-motion';
 import { BookOpen, CheckCircle, Search } from 'lucide-react';
 
 const findings = [
-  { 
-    id: 1, 
-    title: 'Raw Preprocessing Superiority', 
+  {
+    id: 1,
+    title: 'Raw Preprocessing Superiority',
     desc: 'Contrary to initial hypotheses, raw data preprocessing consistently outperformed advanced techniques and feature engineering.',
-    evidence: 'Raw data achieved a 78.05% accuracy peak vs 75.12% for advanced.' 
+    evidence: 'Raw data achieved a 78.05% accuracy peak vs 75.12% for advanced.'
   },
-  { 
-    id: 2, 
-    title: 'LDA Classification Dominance', 
+  {
+    id: 2,
+    title: 'LDA Classification Dominance',
     desc: 'Linear Discriminant Analysis proved highly effective for this dataset due to the linear separability of the freshness classes.',
-    evidence: 'LDA maintained the highest F1 score (77.8%) across all folds.' 
+    evidence: 'LDA maintained the highest F1 score (77.8%) across all folds.'
   },
-  { 
-    id: 3, 
-    title: 'Regression Limitations', 
+  {
+    id: 3,
+    title: 'Regression Limitations',
     desc: 'While classification yielded strong results, predicting exact shelf-life days (regression) showed higher variance, especially for borderline "Mid" fruits.',
-    evidence: 'R² maxed out at 0.86, with noticeable errors around the 5-7 day mark.' 
+    evidence: 'R² maxed out at 0.86, with noticeable errors around the 5-7 day mark.'
   }
 ];
 
@@ -37,8 +37,8 @@ export default function ResearchFindings() {
       <section className="flex flex-col gap-6">
         <h2 className="text-h2">Key Conclusions</h2>
         {findings.map((finding, idx) => (
-          <motion.div 
-            key={finding.id} 
+          <motion.div
+            key={finding.id}
             className="glass-card"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -66,7 +66,7 @@ export default function ResearchFindings() {
         <CheckCircle className="text-success-green" size={32} />
         <div>
           <h3 className="text-h3 mb-1">Project Complete</h3>
-          <p className="text-muted">The Orange Freshness Intelligence System meets all final-year project requirements and demonstrates a viable path to commercial application.</p>
+          <p className="text-muted">The Food Freshness Intelligence System meets all final-year project requirements and demonstrates a viable path to commercial application.</p>
         </div>
       </section>
     </div>

@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Trophy, TrendingUp, Brain, FlaskConical, ArrowRight } from 'lucide-react';
+import { ArrowRight, Brain, FlaskConical, TrendingUp, Trophy } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const kpis = [
@@ -26,15 +26,15 @@ export default function ExecutiveDashboard() {
   return (
     <div className="flex flex-col gap-8" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       {/* Hero Banner */}
-      <motion.section 
-        className="glass-card bg-gradient-dark" 
+      <motion.section
+        className="glass-card bg-gradient-dark"
         style={{ color: 'white', position: 'relative', overflow: 'hidden' }}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
         <div style={{ position: 'relative', zIndex: 2 }}>
-          <h1 className="text-h1" style={{ color: 'white', marginBottom: '0.5rem' }}>Orange Freshness Intelligence System</h1>
+          <h1 className="text-h1" style={{ color: 'white', marginBottom: '0.5rem' }}>Food Freshness Intelligence System</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '1.125rem' }}>AI-Powered Fruit Freshness Classification and Shelf-Life Prediction Platform</p>
         </div>
         {/* Animated Background Graphic placeholder */}
@@ -44,8 +44,8 @@ export default function ExecutiveDashboard() {
       {/* KPI Cards Grid */}
       <section className="grid-cols-4">
         {kpis.map((kpi, idx) => (
-          <motion.div 
-            key={idx} 
+          <motion.div
+            key={idx}
             className="glass-card"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -68,8 +68,8 @@ export default function ExecutiveDashboard() {
         <h2 className="text-h2 mb-4">Tournament Winners</h2>
         <div className="grid-cols-3">
           {winners.map((winner, idx) => (
-            <motion.div 
-              key={idx} 
+            <motion.div
+              key={idx}
               className="glass-card"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -92,7 +92,7 @@ export default function ExecutiveDashboard() {
         <div className="grid-cols-4">
           {quickNav.map((nav, idx) => (
             <Link key={idx} to={nav.path} style={{ textDecoration: 'none' }}>
-              <motion.div 
+              <motion.div
                 className="glass-card"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}

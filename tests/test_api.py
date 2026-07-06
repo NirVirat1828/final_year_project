@@ -200,3 +200,34 @@ def test_analyze_csv_validation_error(client: TestClient) -> None:
     assert response.status_code == 400
     assert "detail" in response.json()
 
+
+def test_websocket_live_predict(client: TestClient) -> None:
+    with client.websocket_connect("/api/v1/ws/live-predict") as websocket:
+        payload = {
+            "readings": [1.0] * 11,
+            "preprocessing_strategy": "raw",
+            "storage_temperature_c": 4.0
+        }
+        websocket.send_json(payload)
+        
+        data = websocket.receive_json()
+        assert data["status"] == "success"
+        assert "results" in data
+        assert "freshness_grade" in data["results"]
+        assert "logistics" in data
+
+
+def test_websocket_live_predict_invalid_readings(client: TestClient) -> None:
+    with client.websocket_connect("/api/v1/ws/live-predict") as websocket:
+        payload = {
+            "readings": [1.0] * 5,
+            "preprocessing_strategy": "raw",
+            "storage_temperature_c": 4.0
+        }
+        websocket.send_json(payload)
+        
+        data = websocket.receive_json()
+        assert data["status"] == "error"
+        assert "Invalid readings length" in data["message"]
+
+

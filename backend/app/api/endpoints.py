@@ -2,17 +2,27 @@ from __future__ import annotations
 
 from time import perf_counter
 
-from fastapi import APIRouter, Depends, Request, HTTPException, File, UploadFile, Form
+from fastapi import APIRouter, Depends, Request, HTTPException, File, UploadFile, Form, WebSocket, WebSocketDisconnect
 from fastapi.responses import Response
+import numpy as np
 
 from app.core.ml_engine import OrangeFreshnessPredictor
 from app.schemas.payload import InferenceRequest, InferenceResponse, ExplainResponse
-from app.services.grading_service import process_batch_inference
+from app.services.grading_service import (
+    process_batch_inference,
+    _grade_from_days,
+    _nutritional_status_from_folic,
+    _temperature_adjusted_remaining_shelf_life,
+    _confidence_interval,
+    GRADE_DESCRIPTIONS,
+    REFERENCE_TEMP_C,
+)
 from app.services.explain_service import process_explanation
 from app.services.shap_visualization import generate_waterfall_plot, generate_bar_plot
-from app.services.csv_service import process_csv_batch
+from app.services.csv_service import process_csv_batch, CSVPreprocessor, EXPECTED_FEATURE_COLS
 from app.core.logging_config import logger
 from app.core.config import MODEL_VERSION
+
 
 router = APIRouter(prefix="/api/v1")
 
@@ -173,4 +183,104 @@ async def analyze_csv(
     except Exception as e:
         logger.error(f"CSV batch prediction failed: {e}")
         raise HTTPException(status_code=500, detail="Failed to process CSV file and generate predictions")
+
+
+def get_websocket_ml_engine(websocket: WebSocket) -> OrangeFreshnessPredictor:
+    ml_engine = getattr(websocket.app.state, "ml_engine", None)
+    if ml_engine is None:
+        ml_engine = OrangeFreshnessPredictor()
+        websocket.app.state.ml_engine = ml_engine
+    return ml_engine
+
+
+@router.websocket("/ws/live-predict")
+async def websocket_live_predict(
+    websocket: WebSocket,
+    ml_engine: OrangeFreshnessPredictor = Depends(get_websocket_ml_engine),
+):
+    await websocket.accept()
+    logger.info("WebSocket connection accepted for live predictions")
+    try:
+        while True:
+            # Receive frame: {"readings": [float, ...], "preprocessing_strategy": "raw", "storage_temperature_c": 4.0}
+            data = await websocket.receive_json()
+            readings = data.get("readings")
+            preprocessing_strategy = data.get("preprocessing_strategy", "raw")
+            storage_temperature_c = data.get("storage_temperature_c", 4.0)
+
+            if not readings:
+                await websocket.send_json({"status": "error", "message": "Missing sensor readings in frame"})
+                continue
+
+            # Process readings
+            if len(readings) >= 15:
+                # Raw signal
+                preprocessor = CSVPreprocessor()
+                signal = np.array(readings[:15], dtype=float)
+                feats = preprocessor.extract_features(signal)
+                sensor_features = [feats[col] for col in EXPECTED_FEATURE_COLS]
+            elif len(readings) == 11:
+                # Engineered features
+                sensor_features = readings
+            else:
+                await websocket.send_json({
+                    "status": "error",
+                    "message": f"Invalid readings length. Expected 11 features or 15 currents. Got {len(readings)}."
+                })
+                continue
+
+            # Perform prediction
+            predicted_days, folic_acid_uM = ml_engine.predict_both(sensor_features)
+
+            freshness_grade = _grade_from_days(predicted_days)
+            grade_description = GRADE_DESCRIPTIONS[freshness_grade]
+            nutritional_status = _nutritional_status_from_folic(folic_acid_uM)
+            remaining_shelf_life_days = _temperature_adjusted_remaining_shelf_life(
+                predicted_days=predicted_days,
+                storage_temperature_c=storage_temperature_c,
+            )
+
+            if preprocessing_strategy.strip().lower() == "advanced":
+                remaining_shelf_life_days += 2.5
+
+            ci = _confidence_interval(
+                remaining_shelf_life_days=remaining_shelf_life_days,
+                storage_temperature_c=storage_temperature_c,
+            )
+
+            temperature_warning = (
+                "Temperature above refrigerated baseline may accelerate spoilage."
+                if storage_temperature_c > REFERENCE_TEMP_C
+                else "Temperature within refrigerated baseline range."
+            )
+
+            # Send response back
+            await websocket.send_json({
+                "status": "success",
+                "results": {
+                    "freshness_grade": freshness_grade,
+                    "grade_description": grade_description,
+                    "folic_acid_uM": float(folic_acid_uM),
+                    "nutritional_status": nutritional_status,
+                },
+                "logistics": {
+                    "estimated_age_days": float(predicted_days),
+                    "remaining_shelf_life_days": float(remaining_shelf_life_days),
+                    "confidence_score_percent": 80.0 if preprocessing_strategy == "advanced" else 100.0,
+                    "confidence_interval": {
+                        "lower_bound": float(ci.lower_bound),
+                        "upper_bound": float(ci.upper_bound),
+                    },
+                    "temperature_warning": temperature_warning,
+                }
+            })
+    except WebSocketDisconnect:
+        logger.info("WebSocket connection closed by client")
+    except Exception as e:
+        logger.error(f"WebSocket error in live predict: {e}")
+        try:
+            await websocket.send_json({"status": "error", "message": "Internal prediction processing error"})
+        except Exception:
+            pass
+
 
