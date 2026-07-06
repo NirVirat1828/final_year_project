@@ -1,13 +1,14 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, Brain, FlaskConical, TrendingUp, Trophy } from 'lucide-react';
+import { ArrowRight, Brain, TrendingUp, Trophy } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useHistory } from '../hooks/useHistory';
+import { useHealth } from '../hooks/useHealth';
 
-const kpis = [
-  { label: 'Best Classification Accuracy', value: '78.05%', icon: <Trophy size={24} className="text-primary-orange" /> },
-  { label: 'Best Regression R² Score', value: '0.86', icon: <TrendingUp size={24} className="text-success-green" /> },
-  { label: 'Algorithms Tested', value: '9', icon: <Brain size={24} className="text-dark-slate" /> },
-  { label: 'Experiment Configurations', value: '18', icon: <FlaskConical size={24} className="text-primary-orange" /> }
-];
+import StatsCard from '../components/dashboard/StatsCard';
+import HealthCard from '../components/dashboard/HealthCard';
+import LatestPredictionCard from '../components/dashboard/LatestPredictionCard';
+import ModelInfoCard from '../components/dashboard/ModelInfoCard';
 
 const winners = [
   { rank: 'Gold', model: 'LDA + Raw', metric: 'Accuracy: 78.05%', color: 'linear-gradient(135deg, #FFD700, #FDB931)' },
@@ -19,10 +20,20 @@ const quickNav = [
   { path: '/tournament', label: 'Tournament Arena', desc: 'View complete model leaderboards.' },
   { path: '/classification', label: 'Classification Dashboard', desc: 'Deep dive into classification metrics.' },
   { path: '/regression', label: 'Regression Dashboard', desc: 'Explore regression model performance.' },
-  { path: '/prediction', label: 'Live Prediction', desc: 'Test models with new sensor data.' }
+  { path: '/prediction', label: 'Live Prediction', desc: 'Test models with new sensor data.' },
+  { path: '/report', label: 'Prediction History', desc: 'View past predictions and download PDF reports.' }
 ];
 
 export default function ExecutiveDashboard() {
+  const { stats, isLoading: isStatsLoading, fetchStats } = useHistory();
+  const { isHealthy, isLoading: isHealthLoading } = useHealth();
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+
+  const isLoading = isStatsLoading || !stats;
+
   return (
     <div className="flex flex-col gap-8" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       {/* Hero Banner */}
@@ -37,30 +48,32 @@ export default function ExecutiveDashboard() {
           <h1 className="text-h1" style={{ color: 'white', marginBottom: '0.5rem' }}>Food Freshness Intelligence System</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '1.125rem' }}>AI-Powered Fruit Freshness Classification and Shelf-Life Prediction Platform</p>
         </div>
-        {/* Animated Background Graphic placeholder */}
         <div style={{ position: 'absolute', top: '-50%', right: '-10%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(255,140,66,0.3) 0%, rgba(0,0,0,0) 70%)', borderRadius: '50%', filter: 'blur(40px)' }} />
       </motion.section>
 
-      {/* KPI Cards Grid */}
+      {/* Backend API KPIs */}
       <section className="grid-cols-4">
-        {kpis.map((kpi, idx) => (
-          <motion.div
-            key={idx}
-            className="glass-card"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3, delay: idx * 0.1 }}
-            style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}
-          >
-            <div>
-              <p className="text-muted mb-2" style={{ fontSize: '0.875rem', fontWeight: 500 }}>{kpi.label}</p>
-              <p className="text-h2">{kpi.value}</p>
-            </div>
-            <div style={{ padding: '0.75rem', background: 'var(--light-bg)', borderRadius: 'var(--radius-md)' }}>
-              {kpi.icon}
-            </div>
-          </motion.div>
-        ))}
+        <StatsCard 
+          label="Total Predictions" 
+          value={isLoading ? "..." : stats.total_predictions} 
+          icon={<Brain size={24} className="text-primary-orange" />} 
+          index={0} 
+        />
+        <StatsCard 
+          label="Average Confidence" 
+          value={isLoading ? "..." : (stats.average_confidence === '-' ? '-' : `${(stats.average_confidence * 100).toFixed(1)}%`)} 
+          icon={<Trophy size={24} className="text-primary-orange" />} 
+          index={1} 
+        />
+        <StatsCard 
+          label="Average Latency" 
+          value={isLoading ? "..." : (stats.average_latency === '-' ? '-' : `${stats.average_latency} ms`)} 
+          icon={<TrendingUp size={24} className="text-success-green" />} 
+          index={2} 
+        />
+        <LatestPredictionCard prediction={isLoading ? null : stats.latest_prediction} />
+        <ModelInfoCard version={isLoading ? '...' : stats.model_version} />
+        <HealthCard status={isHealthLoading ? 'Checking...' : (isHealthy ? 'Online' : 'Offline')} />
       </section>
 
       {/* Tournament Winners */}

@@ -10,7 +10,8 @@ import {
   Lightbulb, 
   Activity, 
   BookOpen, 
-  FileText 
+  FileText,
+  BarChart3
 } from 'lucide-react';
 
 const navItems = [
@@ -24,7 +25,8 @@ const navItems = [
   { path: '/features', label: 'Feature Insights', icon: <Lightbulb size={18} /> },
   { path: '/prediction', label: 'Live Prediction', icon: <Activity size={18} /> },
   { path: '/research', label: 'Research Findings', icon: <BookOpen size={18} /> },
-  { path: '/report', label: 'Report Generator', icon: <FileText size={18} /> },
+  { path: '/report', label: 'Prediction History', icon: <FileText size={18} /> },
+  { path: '/analytics', label: 'Analytics Dashboard', icon: <BarChart3 size={18} /> },
 ];
 
 export default function Sidebar() {

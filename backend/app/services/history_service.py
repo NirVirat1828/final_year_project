@@ -106,3 +106,30 @@ def delete_prediction(db: Session, prediction_id: int) -> bool:
         db.commit()
         return True
     return False
+
+def get_prediction_stats(db: Session) -> dict:
+    """
+    Computes aggregate statistics from the PredictionHistory table.
+
+    Args:
+        db (Session): The active database session.
+
+    Returns:
+        dict: Aggregated statistics.
+    """
+    total = db.query(func.count(PredictionHistory.id)).scalar() or 0
+    avg_confidence = db.query(func.avg(PredictionHistory.confidence)).scalar() or 0.0
+    avg_latency = db.query(func.avg(PredictionHistory.latency_ms)).scalar() or 0.0
+    latest = db.query(PredictionHistory).order_by(PredictionHistory.created_at.desc()).first()
+
+    return {
+        "total_predictions": total,
+        "average_confidence": round(avg_confidence, 2),
+        "average_latency": round(avg_latency, 2),
+        "latest_prediction": {
+            "id": latest.id if latest else None,
+            "grade": latest.freshness_grade if latest else "N/A"
+        },
+        "model_version": latest.model_version if latest else "v1.0.0",
+        "backend_status": "Online"
+    }

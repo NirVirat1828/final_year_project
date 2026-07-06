@@ -31,12 +31,12 @@ import {
   Cell, 
   Legend 
 } from 'recharts';
-import { 
-  analyzeCsvBatch, 
-  analyzeBatch, 
-  explainPrediction, 
-  explainPredictionVisualize 
-} from '../api/inferenceApi';
+import { usePrediction } from '../hooks/usePrediction';
+import { explainPrediction, explainPredictionVisualize } from '../api/explainApi';
+import InferenceForm from '../components/InferenceForm';
+import ResultsDashboard from '../components/ResultsDashboard';
+import ErrorCard from '../components/ui/ErrorCard';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
 
 const sensors = [
   { id: 'Peak_0.85V', label: 'Peak Voltage (0.85V)' },
@@ -54,17 +54,15 @@ const sensors = [
 
 export default function LivePrediction() {
   const [method, setMethod] = useState('manual');
-  const [isPredicting, setIsPredicting] = useState(false);
-  const [result, setResult] = useState(null);
-  const [error, setError] = useState(null);
+  
+  const { predict: predictManual, data: manualResult, isLoading: isManualPredicting, error: manualError } = usePrediction();
+  const { predict: predictCsv, data: csvResult, isLoading: isCsvPredicting, error: csvError, reset: resetCsv } = usePrediction();
 
   // CSV upload state
   const [selectedFile, setSelectedFile] = useState(null);
   const [preprocessingStrategy, setPreprocessingStrategy] = useState('raw');
   const [storageTemperature, setStorageTemperature] = useState(4.0);
   const [dragActive, setDragActive] = useState(false);
-  const [csvResults, setCsvResults] = useState(null);
-  const [csvSummary, setCsvSummary] = useState(null);
   const fileInputRef = useRef(null);
 
   // WebSocket Live Stream state
@@ -89,10 +87,7 @@ export default function LivePrediction() {
   const [searchQuery, setSearchQuery] = useState('');
   const [gradeFilter, setGradeFilter] = useState('All');
 
-  // Manual input values
-  const [manualInputs, setManualInputs] = useState(
-    sensors.reduce((acc, sensor) => ({ ...acc, [sensor.id]: '' }), {})
-  );
+
 
   const wsRef = useRef(null);
   const timerRef = useRef(null);
@@ -137,52 +132,13 @@ export default function LivePrediction() {
     fetchExplanation();
   }, [selectedExplanationReadings, explainModel, explainPlotType]);
 
-  const handleManualInputChange = (id, val) => {
-    setManualInputs(prev => ({ ...prev, [id]: val }));
-  };
-
-  const handlePredict = async () => {
-    setIsPredicting(true);
-    setError(null);
-    
-    // Validate that all inputs are filled
-    const emptyFields = sensors.filter(s => {
-      const val = manualInputs[s.id];
-      return val === undefined || val === null || String(val).trim() === '';
-    });
-
-    if (emptyFields.length > 0) {
-      setError("Please fill out all 11 sensor input fields before running the prediction.");
-      setIsPredicting(false);
-      return;
-    }
-
+  const handleManualSubmit = async (payload) => {
     try {
-      // Parse manual inputs as floats
-      const readings = sensors.map(s => parseFloat(manualInputs[s.id]));
-      const payload = {
-        batch_id: `manual-${Date.now()}`,
-        sensor_readings: readings,
-        preprocessing_strategy: 'raw',
-        storage_temperature_c: 4.0
-      };
-      
-      const response = await analyzeBatch(payload);
-      setResult({
-        grade: response.results.freshness_grade,
-        shelfLife: `${response.logistics.remaining_shelf_life_days.toFixed(1)} Days`,
-        confidence: response.logistics.confidence_score_percent.toFixed(0),
-        folicAcidPred: `${response.results.folic_acid_uM.toFixed(1)} µM`
-      });
-
-      // Set XAI inputs
-      setSelectedExplanationReadings(readings);
-      setSelectedSampleName("Manual Entry");
+      const response = await predictManual(payload, false);
+      setSelectedExplanationReadings(payload.sensor_readings);
+      setSelectedSampleName(payload.batch_id || "Manual Entry");
     } catch (err) {
-      console.error(err);
-      setError(err instanceof Error ? err.message : "Manual prediction failed.");
-    } finally {
-      setIsPredicting(false);
+      console.error("Manual prediction failed", err);
     }
   };
 
@@ -217,40 +173,26 @@ export default function LivePrediction() {
       const file = e.target.files[0];
       if (file.name.endsWith('.csv')) {
         setSelectedFile(file);
-        setError(null);
-      } else {
-        setError("Invalid file format. Please upload a .csv file.");
       }
     }
   };
 
   const handleCsvPredict = async () => {
     if (!selectedFile) return;
-    setIsPredicting(true);
-    setError(null);
     try {
-      const response = await analyzeCsvBatch(selectedFile, preprocessingStrategy, storageTemperature);
-      setCsvResults(response.predictions);
-      setCsvSummary(response);
-      
-      // Auto explain the first sample in batch
-      if (response.predictions && response.predictions.length > 0) {
+      const response = await predictCsv(selectedFile, true, preprocessingStrategy, storageTemperature);
+      if (response?.predictions && response.predictions.length > 0) {
         setSelectedExplanationReadings(response.predictions[0].sensor_readings);
         setSelectedSampleName(`Sample #${response.predictions[0].sample_index}`);
       }
     } catch (err) {
-      console.error(err);
-      setError(err instanceof Error ? err.message : "Failed to analyze batch.");
-    } finally {
-      setIsPredicting(false);
+      console.error("Batch analysis failed", err);
     }
   };
 
   const clearFile = () => {
     setSelectedFile(null);
-    setCsvResults(null);
-    setCsvSummary(null);
-    setError(null);
+    resetCsv();
     setSelectedExplanationReadings(null);
     setSelectedSampleName('');
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -426,6 +368,8 @@ export default function LivePrediction() {
   let avgShelf = 0;
   let avgFolic = 0;
   let healthScore = 0;
+
+  const csvResults = csvResult?.predictions;
 
   if (csvResults && csvResults.length > 0) {
     csvResults.forEach(r => {
@@ -662,74 +606,22 @@ export default function LivePrediction() {
       {method === 'manual' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
           {/* Input Section */}
-          <section className="glass-card flex flex-col gap-6">
-            <h2 className="text-h2">Input Data</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
-              {sensors.map((sensor) => (
-                <div key={sensor.id}>
-                  <label className="text-muted mb-2" style={{ display: 'block', fontSize: '0.875rem' }}>{sensor.label}</label>
-                  <input 
-                    type="number" 
-                    placeholder="0.00" 
-                    value={manualInputs[sensor.id]}
-                    onChange={(e) => handleManualInputChange(sensor.id, e.target.value)}
-                    style={{ width: '100%', padding: '0.5rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', outline: 'none' }}
-                  />
-                </div>
-              ))}
-            </div>
-
-            {error && (
-              <div style={{ backgroundColor: 'rgba(231, 76, 60, 0.1)', color: '#E74C3C', padding: '0.75rem', borderRadius: 'var(--radius-sm)', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <AlertCircle size={16} /> {error}
+          <div className="flex flex-col gap-4">
+            <InferenceForm onSubmit={handleManualSubmit} />
+            <ErrorCard message={manualError} />
+            {isManualPredicting && (
+              <div className="glass-card flex items-center justify-center p-4 gap-3">
+                <LoadingSpinner />
+                <span className="animate-pulse text-primary-orange">Analyzing Data...</span>
               </div>
             )}
-
-            <button 
-              className="btn btn-primary w-full" 
-              style={{ padding: '1rem', fontSize: '1.125rem', marginTop: '1rem' }}
-              onClick={handlePredict}
-              disabled={isPredicting}
-            >
-              {isPredicting ? <span className="animate-pulse">Analyzing Data...</span> : <><Play size={20} /> Run Prediction</>}
-            </button>
-          </section>
+          </div>
 
           {/* Results Section */}
           <section className="flex flex-col gap-6">
-            {result ? (
+            {manualResult ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <motion.div 
-                  className="glass-card" 
-                  initial={{ opacity: 0, scale: 0.95 }} 
-                  animate={{ opacity: 1, scale: 1 }}
-                  style={{ borderTop: '4px solid var(--success-green)' }}
-                >
-                  <h2 className="text-h2 mb-6">Prediction Results</h2>
-                  
-                  <div style={{ display: 'flex', gap: '2rem', marginBottom: '2rem' }}>
-                    <div style={{ width: '120px', height: '120px', borderRadius: '50%', border: '8px solid var(--success-green)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', alignContent: 'center' }}>
-                      <span className="text-h2">{result.confidence}%</span>
-                      <span className="text-muted" style={{ fontSize: '0.75rem' }}>Confidence</span>
-                    </div>
-                    
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem', justifyContent: 'center' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
-                        <span className="text-muted">Freshness Grade</span>
-                        <span className="text-h3" style={{ color: 'var(--success-green)' }}>{result.grade}</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
-                        <span className="text-muted">Estimated Shelf Life</span>
-                        <span className="text-h3">{result.shelfLife}</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span className="text-muted">Predicted Folic Acid</span>
-                        <span className="text-h3">{result.folicAcidPred}</span>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-
+                <ResultsDashboard resultsData={manualResult} />
                 {/* XAI Panel for Manual Input */}
                 {renderXAIPanel()}
               </div>
@@ -839,22 +731,17 @@ export default function LivePrediction() {
                   />
                 </div>
 
-                {error && (
-                  <div style={{ backgroundColor: 'rgba(231, 76, 60, 0.1)', color: '#E74C3C', padding: '0.75rem', borderRadius: 'var(--radius-sm)', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <AlertCircle size={16} /> {error}
-                  </div>
-                )}
+                <ErrorCard message={csvError} />
 
                 <button 
                   className="btn btn-primary w-full"
                   onClick={handleCsvPredict}
-                  disabled={!selectedFile || isPredicting}
-                  style={{ marginTop: 'auto', padding: '0.75rem' }}
+                  disabled={!selectedFile || isCsvPredicting}
+                  style={{ marginTop: 'auto', padding: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
                 >
-                  {isPredicting ? (
+                  {isCsvPredicting ? (
                     <>
-                      <RefreshCw size={18} className="animate-spin" />
-                      Analyzing Batch...
+                      <LoadingSpinner size={18} /> Analyzing Batch...
                     </>
                   ) : (
                     <>

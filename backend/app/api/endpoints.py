@@ -49,6 +49,7 @@ from app.services.history_service import (
     get_prediction_history,
     get_prediction_by_id,
     delete_prediction,
+    get_prediction_stats,
 )
 from app.services.report_service import generate_prediction_report
 from app.schemas.history import PredictionHistoryResponse, PredictionHistoryListResponse
@@ -341,6 +342,24 @@ def get_history(
         return get_prediction_history(db, page=page, page_size=page_size)
     except SQLAlchemyError as db_err:
         logger.error(f"Database error during history retrieval: {db_err}")
+        raise HTTPException(status_code=503, detail="Database unavailable")
+
+
+@router.get(
+    "/history/stats",
+    summary="Get Prediction Stats",
+    description="Retrieves aggregate statistics across all stored predictions.",
+    responses={
+        200: {"description": "Successfully retrieved prediction stats"},
+        503: {"description": "Database unavailable"}
+    }
+)
+def get_history_stats(db: Session = Depends(get_db)):
+    logger.info("History stats requested")
+    try:
+        return get_prediction_stats(db)
+    except SQLAlchemyError as db_err:
+        logger.error(f"Database error during history stats retrieval: {db_err}")
         raise HTTPException(status_code=503, detail="Database unavailable")
 
 
