@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from time import perf_counter
 
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Depends, Request, HTTPException, File, UploadFile, Form
 from fastapi.responses import Response
 
 from app.core.ml_engine import OrangeFreshnessPredictor
@@ -10,6 +10,7 @@ from app.schemas.payload import InferenceRequest, InferenceResponse, ExplainResp
 from app.services.grading_service import process_batch_inference
 from app.services.explain_service import process_explanation
 from app.services.shap_visualization import generate_waterfall_plot, generate_bar_plot
+from app.services.csv_service import process_csv_batch
 from app.core.logging_config import logger
 from app.core.config import MODEL_VERSION
 
@@ -22,6 +23,7 @@ def get_ml_engine(request: Request) -> OrangeFreshnessPredictor:
         ml_engine = OrangeFreshnessPredictor()
         request.app.state.ml_engine = ml_engine
     return ml_engine
+
 
 
 @router.get("/health")
@@ -144,3 +146,31 @@ def visualize_explanation(
     except Exception as e:
         logger.error(f"Visualization failed: {e}")
         raise HTTPException(status_code=500, detail="Visualization generation failed")
+
+
+@router.post("/analyze-csv")
+async def analyze_csv(
+    request: Request,
+    file: UploadFile = File(...),
+    preprocessing_strategy: str = Form("raw"),
+    storage_temperature_c: float = Form(4.0),
+    ml_engine: OrangeFreshnessPredictor = Depends(get_ml_engine),
+) -> dict:
+    logger.info(f"CSV batch prediction request received for file: {file.filename}")
+    try:
+        file_bytes = await file.read()
+        response = process_csv_batch(
+            file_bytes=file_bytes,
+            preprocessing_strategy=preprocessing_strategy,
+            storage_temperature_c=storage_temperature_c,
+            ml_engine=ml_engine,
+        )
+        logger.info(f"CSV batch prediction completed for file {file.filename}: {response['total_samples']} samples processed.")
+        return response
+    except ValueError as e:
+        logger.warning(f"Validation error processing CSV: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"CSV batch prediction failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to process CSV file and generate predictions")
+

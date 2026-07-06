@@ -150,3 +150,53 @@ def test_explain_prediction_model_error(client: TestClient, monkeypatch: pytest.
     response = client.post("/api/v1/explain", json=payload)
     assert response.status_code == 500
     assert response.json()["detail"] == "Explanation generation failed"
+
+
+def test_analyze_csv_success(client: TestClient) -> None:
+    csv_content = (
+        "voltage,current_1,current_2,current_3,current_4,current_5,current_6,current_7,current_8,current_9,current_10,current_11,current_12,current_13,current_14,current_15\n"
+        "0.6,14.9,14.6,15.0,14.3,15.0,14.5,14.9,14.7,14.7,14.6,15.2,14.3,14.9,15.0,14.8\n"
+        "0.6,15.2,14.8,15.5,14.7,14.9,15.4,15.1,15.4,14.6,14.6,15.2,14.9,15.4,15.2,15.0\n"
+    )
+    
+    file_payload = {
+        "file": ("test.csv", csv_content, "text/csv")
+    }
+    data_payload = {
+        "preprocessing_strategy": "raw",
+        "storage_temperature_c": 4.0
+    }
+    
+    response = client.post(
+        "/api/v1/analyze-csv",
+        files=file_payload,
+        data=data_payload
+    )
+    
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total_samples"] == 2
+    assert len(body["predictions"]) == 2
+    assert body["predictions"][0]["results"]["freshness_grade"] in ["A", "B", "C", "D"]
+    assert "remaining_shelf_life_days" in body["predictions"][0]["logistics"]
+
+
+def test_analyze_csv_validation_error(client: TestClient) -> None:
+    csv_content = ""
+    file_payload = {
+        "file": ("test.csv", csv_content, "text/csv")
+    }
+    data_payload = {
+        "preprocessing_strategy": "raw",
+        "storage_temperature_c": 4.0
+    }
+    
+    response = client.post(
+        "/api/v1/analyze-csv",
+        files=file_payload,
+        data=data_payload
+    )
+    
+    assert response.status_code == 400
+    assert "detail" in response.json()
+
