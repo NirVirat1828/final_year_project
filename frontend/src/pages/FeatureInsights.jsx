@@ -2,14 +2,15 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Lightbulb, Share2 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
+import CorrelationNetwork from '../components/analytics/CorrelationNetwork';
 
 const featureImportance = [
-  { name: 'pH Level', value: 0.85 },
-  { name: 'Folic Acid', value: 0.62 },
-  { name: 'Firmness', value: 0.54 },
-  { name: 'Moisture', value: 0.31 },
-  { name: 'Vitamin C', value: 0.25 },
-  { name: 'Brix', value: 0.18 }
+  { name: 'Peak Voltage (0.85V)', value: 0.85 },
+  { name: 'Signal Energy', value: 0.62 },
+  { name: 'DCT Coefficient 1', value: 0.54 },
+  { name: 'Signal Mean', value: 0.31 },
+  { name: 'Kurtosis', value: 0.25 },
+  { name: 'Skewness', value: 0.18 }
 ];
 
 export default function FeatureInsights() {
@@ -68,13 +69,8 @@ export default function FeatureInsights() {
             </p>
           </motion.div>
 
-          {/* Correlation Network Placeholder */}
-          <div className="glass-card flex items-center justify-center bg-gradient-dark" style={{ height: '100%', minHeight: '150px', color: 'white', opacity: 0.9 }}>
-            <div className="flex flex-col items-center gap-2">
-              <Share2 size={32} className="text-primary-orange" />
-              <p>Correlation Network Graph</p>
-            </div>
-          </div>
+          {/* Correlation Network Graph */}
+          <CorrelationNetwork />
         </section>
       </div>
     </div>

@@ -1,19 +1,26 @@
-import { useState } from 'react'
+import { useState } from 'react';
+import { getSimulatedScan } from '../api/dataApi';
+import { Loader2 } from 'lucide-react';
 
-const INITIAL_SENSOR_READINGS = Array.from({ length: 11 }, () => 0)
-
-function generateMockSensorReadings() {
-  return [21.21, 24.93, 1.87, 2315236.74, -0.82, 0.92, 53.77, -26.79, 9.8, -35.35, -23.0]
-}
+const INITIAL_SENSOR_READINGS = Array.from({ length: 11 }, () => 0);
 
 export default function InferenceForm({ onSubmit }) {
   const [batchId, setBatchId] = useState('BATCH-8821')
   const [preprocessingStrategy, setPreprocessingStrategy] = useState('raw')
   const [storageTemperatureC, setStorageTemperatureC] = useState(4)
   const [sensorReadings, setSensorReadings] = useState(INITIAL_SENSOR_READINGS)
+  const [isSimulating, setIsSimulating] = useState(false);
 
-  const handleSimulateSensorScan = () => {
-    setSensorReadings(generateMockSensorReadings())
+  const handleSimulateSensorScan = async () => {
+    setIsSimulating(true);
+    try {
+      const readings = await getSimulatedScan();
+      setSensorReadings(readings);
+    } catch (e) {
+      console.error("Failed to simulate hardware scan", e);
+    } finally {
+      setIsSimulating(false);
+    }
   }
 
   const handleSubmit = (event) => {
@@ -82,11 +89,17 @@ export default function InferenceForm({ onSubmit }) {
           <div className="sensor-panel-header">
             <div>
               <p className="panel-title">Sensor readings</p>
-              <p className="panel-note">A mock scan generates the 11 input values required by the backend.</p>
+              <p className="panel-note">Fetches a realistic 11-feature sensor footprint from the backend.</p>
             </div>
 
-            <button type="button" className="secondary-btn simulate-btn" onClick={handleSimulateSensorScan}>
-              Simulate Sensor Scan
+            <button 
+              type="button" 
+              className="secondary-btn simulate-btn flex items-center gap-2" 
+              onClick={handleSimulateSensorScan}
+              disabled={isSimulating}
+            >
+              {isSimulating ? <Loader2 size={16} className="animate-spin" /> : null}
+              Simulate E-Tongue Scan
             </button>
           </div>
 

@@ -7,7 +7,6 @@ from typing import Any, Dict, List
 from scipy.signal import savgol_filter
 from scipy.fftpack import dct
 from scipy.stats import skew, kurtosis
-
 from app.core.ml_engine import OrangeFreshnessPredictor
 from app.services.grading_service import (
     _grade_from_days,
@@ -17,6 +16,7 @@ from app.services.grading_service import (
     GRADE_DESCRIPTIONS,
     REFERENCE_TEMP_C,
 )
+from app.services.decision_engine import DecisionEngine
 
 EXPECTED_FEATURE_COLS = [
     "Peak_0.85V",
@@ -124,6 +124,8 @@ def process_csv_batch(
     confidence_score_percent = 100.0
     if preprocessing_strategy.strip().lower() == "advanced":
         confidence_score_percent = max(0.0, confidence_score_percent - 20.0)
+        
+    decision_engine = DecisionEngine()
 
     for idx, row in df_features.iterrows():
         sensor_readings = row.tolist()
@@ -153,6 +155,13 @@ def process_csv_batch(
             else "Temperature within refrigerated baseline range."
         )
 
+        business_decision = decision_engine.generate_decision(
+            predicted_class=freshness_grade,
+            prediction_probabilities={freshness_grade: float(confidence_score_percent) / 100.0},
+            shap_feature_importance=[],
+            sensor_values=[float(val) for val in sensor_readings]
+        )
+
         predictions_list.append({
             "sample_index": int(idx),
             "sensor_readings": [float(val) for val in sensor_readings],
@@ -171,7 +180,8 @@ def process_csv_batch(
                     "upper_bound": float(ci.upper_bound),
                 },
                 "temperature_warning": temperature_warning,
-            }
+            },
+            "business_decision": business_decision.model_dump()
         })
 
     return {

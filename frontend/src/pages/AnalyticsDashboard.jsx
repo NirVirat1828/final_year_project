@@ -15,7 +15,8 @@ export default function AnalyticsDashboard() {
   const { data: history, isLoading, error, fetchHistory } = useHistory();
 
   useEffect(() => {
-    fetchHistory(1, 1000);
+    // Backend limits page_size to 100 (le=100 in endpoints.py)
+    fetchHistory(1, 100);
   }, [fetchHistory]);
 
   // Compute Aggregations

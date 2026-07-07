@@ -4,6 +4,7 @@ import { ArrowLeft, Trash2, Activity, FileText } from 'lucide-react';
 import { useHistory } from '../hooks/useHistory';
 import DownloadReportButton from '../components/DownloadReportButton';
 import ResultsDashboard from '../components/ResultsDashboard';
+import DecisionDashboard from '../components/decision/DecisionDashboard';
 import SkeletonLoader from '../components/ui/SkeletonLoader';
 import ErrorCard from '../components/ui/ErrorCard';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
@@ -72,14 +73,25 @@ export default function PredictionDetails() {
 
   if (!prediction) return null;
 
+  // Parse JSON strings from database
+  let requestJson = {};
+  let responseJson = {};
+  try {
+    requestJson = typeof prediction.request_json === 'string' ? JSON.parse(prediction.request_json) : prediction.request_json;
+    responseJson = typeof prediction.response_json === 'string' ? JSON.parse(prediction.response_json) : prediction.response_json;
+  } catch (e) {
+    console.error("Failed to parse prediction JSON", e);
+  }
+
   // Reconstruct response format expected by ResultsDashboard
   const resultsData = {
-    results: prediction.response_json.results,
-    logistics: prediction.response_json.logistics
+    results: responseJson.results,
+    logistics: responseJson.logistics,
+    business_decision: responseJson.business_decision
   };
 
-  const hasShapData = !!prediction.response_json.explanation;
-  const sensorReadings = prediction.request_json.sensor_readings;
+  const hasShapData = !!responseJson.explanation;
+  const sensorReadings = requestJson.sensor_readings || [];
 
   return (
     <div className="flex flex-col gap-8">
@@ -124,6 +136,10 @@ export default function PredictionDetails() {
         <div className="flex flex-col gap-8">
           {/* Section 1: Prediction Summary (reusing ResultsDashboard) */}
           <ResultsDashboard resultsData={resultsData} />
+          
+          {resultsData.business_decision && (
+            <DecisionDashboard decisionData={resultsData.business_decision} />
+          )}
 
           {/* Section 2: Sensor Readings */}
           <section className="glass-card">
@@ -165,7 +181,7 @@ export default function PredictionDetails() {
                     </tr>
                   </thead>
                   <tbody>
-                    {Object.entries(prediction.response_json.explanation.top_features_day)
+                    {Object.entries(responseJson.explanation.top_features_day)
                       .sort(([, a], [, b]) => Math.abs(b) - Math.abs(a))
                       .slice(0, 5)
                       .map(([feature, val]) => (
@@ -206,7 +222,7 @@ export default function PredictionDetails() {
               </div>
               <div>
                 <p className="text-muted" style={{ fontSize: '0.75rem', marginBottom: '0.25rem' }}>Storage Temp</p>
-                <p style={{ fontWeight: 500 }}>{prediction.request_json.storage_temperature_c}°C</p>
+                <p style={{ fontWeight: 500 }}>{requestJson.storage_temperature_c}°C</p>
               </div>
             </div>
           </section>

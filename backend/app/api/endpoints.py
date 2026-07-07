@@ -52,6 +52,7 @@ from app.services.history_service import (
     get_prediction_stats,
 )
 from app.services.report_service import generate_prediction_report
+from app.services.data_service import get_paginated_dataset, get_model_benchmarks, simulate_hardware_scan
 from app.schemas.history import PredictionHistoryResponse, PredictionHistoryListResponse
 
 @router.post("/analyze-batch", response_model=InferenceResponse)
@@ -440,3 +441,33 @@ def download_prediction_report(id: int, db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"Error generating report for prediction {id}: {e}")
         raise HTTPException(status_code=500, detail="Report generation failed")
+
+
+@router.get("/dataset")
+def get_dataset(page: int = Query(1, ge=1), page_size: int = Query(50, ge=1, le=500)):
+    """Fetch paginated dataset rows for the frontend explorer."""
+    try:
+        return get_paginated_dataset(page=page, page_size=page_size)
+    except Exception as e:
+        logger.error(f"Dataset fetch error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch dataset")
+
+
+@router.get("/models/benchmark")
+def get_benchmarks():
+    """Fetch model benchmark metrics."""
+    try:
+        return get_model_benchmarks()
+    except Exception as e:
+        logger.error(f"Benchmark fetch error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch benchmarks")
+
+
+@router.get("/hardware/simulate")
+def simulate_hardware():
+    """Returns an array of 11 realistic sensor readings from the test set."""
+    try:
+        return simulate_hardware_scan()
+    except Exception as e:
+        logger.error(f"Hardware simulation error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to simulate hardware")

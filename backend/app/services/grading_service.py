@@ -13,6 +13,7 @@ from app.schemas.payload import (
     InferenceResponse,
     InferenceResults,
 )
+from app.services.decision_engine import DecisionEngine
 
 MAX_STORAGE_DAYS = 14.0
 REFERENCE_TEMP_C = 4.0
@@ -99,6 +100,14 @@ def process_batch_inference(
     if preprocessing_strategy == "advanced":
         remaining_shelf_life_days += 2.5
 
+    decision_engine = DecisionEngine()
+    business_decision = decision_engine.generate_decision(
+        predicted_class=freshness_grade,
+        prediction_probabilities={freshness_grade: confidence_score_percent / 100.0},
+        shap_feature_importance=[],
+        sensor_values=request.sensor_readings
+    )
+
     response = InferenceResponse(
         status="success",
         batch_id=request.batch_id,
@@ -123,6 +132,7 @@ def process_batch_inference(
                 else "Temperature within refrigerated baseline range."
             ),
         ),
+        business_decision=business_decision
     )
 
     return response

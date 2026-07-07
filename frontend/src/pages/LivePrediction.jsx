@@ -35,8 +35,10 @@ import { usePrediction } from '../hooks/usePrediction';
 import { explainPrediction, explainPredictionVisualize } from '../api/explainApi';
 import InferenceForm from '../components/InferenceForm';
 import ResultsDashboard from '../components/ResultsDashboard';
+import DecisionDashboard from '../components/decision/DecisionDashboard';
 import ErrorCard from '../components/ui/ErrorCard';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { getDataset } from '../api/dataApi';
 
 const sensors = [
   { id: 'Peak_0.85V', label: 'Peak Voltage (0.85V)' },
@@ -254,20 +256,23 @@ export default function LivePrediction() {
           }
         }
         
+        
         initWebSocketConnection(parsedRows);
       };
       reader.readAsText(streamingFile);
     } else {
-      // Stream simulated entries
-      const mockRows = [];
-      for (let i = 0; i < 60; i++) {
-        const row = [];
-        for (let j = 0; j < 11; j++) {
-          row.push(0.1 + Math.random() * 1.3);
-        }
-        mockRows.push(row);
-      }
-      initWebSocketConnection(mockRows);
+      // Stream realistic entries by fetching from backend dataset
+      getDataset(1, 60).then(response => {
+        const rows = response.data.map(row => [
+          row['Peak_0.85V'], row.Mean, row.Std_Dev, row.Energy, 
+          row.Skewness, row.Kurtosis, row.DCT_1, row.DCT_2, 
+          row.DCT_3, row.DCT_4, row.DCT_5
+        ].map(val => Number(val) || 0.0));
+        
+        initWebSocketConnection(rows);
+      }).catch(err => {
+        setError("Failed to fetch simulated stream data from backend.");
+      });
     }
   };
 
@@ -622,6 +627,9 @@ export default function LivePrediction() {
             {manualResult ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <ResultsDashboard resultsData={manualResult} />
+                {manualResult.business_decision && (
+                  <DecisionDashboard decisionData={manualResult.business_decision} />
+                )}
                 {/* XAI Panel for Manual Input */}
                 {renderXAIPanel()}
               </div>

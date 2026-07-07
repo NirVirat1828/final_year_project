@@ -1,22 +1,9 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Filter } from 'lucide-react';
+import { Search, Filter, Loader2 } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-
-const summaryStats = [
-  { label: 'Total Samples', value: '1,248' },
-  { label: 'Total Features', value: '11' },
-  { label: 'Fresh Class Count', value: '412' },
-  { label: 'Mid Class Count', value: '430' },
-  { label: 'Spoiled Class Count', value: '406' }
-];
-
-const mockData = [
-  { id: 1, folicAcid: 12.4, vitC: 45.2, pH: 3.2, moisture: 88.5, class: 'Fresh' },
-  { id: 2, folicAcid: 10.1, vitC: 38.4, pH: 3.5, moisture: 82.1, class: 'Mid' },
-  { id: 3, folicAcid: 5.2, vitC: 15.6, pH: 4.1, moisture: 65.3, class: 'Spoiled' },
-  { id: 4, folicAcid: 11.8, vitC: 42.1, pH: 3.3, moisture: 86.2, class: 'Fresh' },
-  { id: 5, folicAcid: 8.9, vitC: 29.5, pH: 3.8, moisture: 75.8, class: 'Mid' },
-];
+import { getDataset } from '../api/dataApi';
+import ErrorCard from '../components/ui/ErrorCard';
 
 const classDistData = [
   { name: 'Fresh', value: 412 },
@@ -33,6 +20,55 @@ const featureDistData = [
 ];
 
 export default function DatasetExplorer() {
+  const [data, setData] = useState([]);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  const [selectedFeature, setSelectedFeature] = useState('Peak_0.85V');
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchRealDataset = async () => {
+      try {
+        const response = await getDataset(1, 100);
+        if (mounted) {
+          setData(response.data);
+          setTotalRecords(response.total_records);
+          setIsLoading(false);
+        }
+      } catch (err) {
+        if (mounted) {
+          setError(err.message);
+          setIsLoading(false);
+        }
+      }
+    };
+    fetchRealDataset();
+    return () => { mounted = false; };
+  }, []);
+
+  // Update summary stats based on real dataset size
+  const summaryStats = [
+    { label: 'Total Samples', value: totalRecords > 0 ? totalRecords.toLocaleString() : '-' },
+    { label: 'Total Features', value: '11' },
+    { label: 'Batches Count', value: '12' }, // Static approximation
+    { label: 'Hardware', value: 'E-Tongue' },
+    { label: 'Storage Temp', value: '4°C / 20°C' }
+  ];
+
+  // Dynamic feature inspector calculations
+  let fMean = 0, fStdDev = 0, fVariance = 0, fMissing = 0;
+  if (data.length > 0) {
+    const validVals = data.map(d => Number(d[selectedFeature])).filter(v => !isNaN(v));
+    fMissing = data.length - validVals.length;
+    if (validVals.length > 0) {
+      fMean = validVals.reduce((a, b) => a + b, 0) / validVals.length;
+      fVariance = validVals.reduce((a, b) => a + Math.pow(b - fMean, 2), 0) / validVals.length;
+      fStdDev = Math.sqrt(fVariance);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-8" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       <div className="flex justify-between items-center">
@@ -72,34 +108,45 @@ export default function DatasetExplorer() {
             </div>
           </div>
           <div className="table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Sample ID</th>
-                  <th>Folic Acid (mg)</th>
-                  <th>Vitamin C (mg)</th>
-                  <th>pH Level</th>
-                  <th>Moisture (%)</th>
-                  <th>Class</th>
-                </tr>
-              </thead>
-              <tbody>
-                {mockData.map((row) => (
-                  <tr key={row.id}>
-                    <td>#{row.id}</td>
-                    <td>{row.folicAcid}</td>
-                    <td>{row.vitC}</td>
-                    <td>{row.pH}</td>
-                    <td>{row.moisture}</td>
-                    <td>
-                      <span className="status-badge" style={{ backgroundColor: row.class === 'Fresh' ? 'rgba(46, 204, 113, 0.1)' : row.class === 'Mid' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: row.class === 'Fresh' ? '#2ECC71' : row.class === 'Mid' ? '#F59E0B' : '#EF4444' }}>
-                        {row.class}
-                      </span>
-                    </td>
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center p-8 text-muted">
+                <Loader2 className="animate-spin mb-4" size={32} />
+                <p>Loading dataset from backend...</p>
+              </div>
+            ) : error ? (
+              <ErrorCard message={error} />
+            ) : (
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Row ID</th>
+                    <th>Peak Voltage (V)</th>
+                    <th>Energy</th>
+                    <th>Mean</th>
+                    <th>DCT_1</th>
+                    <th>Age (Days)</th>
+                    <th>Folic Acid (uM)</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {data.slice(0, 50).map((row, idx) => (
+                    <tr key={idx}>
+                      <td>#{idx + 1}</td>
+                      <td>{Number(row['Peak_0.85V']).toFixed(4)}</td>
+                      <td>{Number(row['Energy']).toFixed(4)}</td>
+                      <td>{Number(row['Mean']).toFixed(4)}</td>
+                      <td>{Number(row['DCT_1']).toFixed(4)}</td>
+                      <td>
+                        <span className="status-badge" style={{ backgroundColor: 'rgba(241, 196, 15, 0.1)', color: '#F1C40F' }}>
+                          {Number(row['day']).toFixed(1)} days
+                        </span>
+                      </td>
+                      <td>{Number(row['true_conc_uM']).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </section>
 
@@ -108,30 +155,37 @@ export default function DatasetExplorer() {
           <h2 className="text-h3">Feature Inspector</h2>
           <div className="mb-4">
             <label className="text-muted mb-2" style={{ display: 'block', fontSize: '0.875rem' }}>Select Feature</label>
-            <select style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', outline: 'none' }}>
-              <option>Folic Acid</option>
-              <option>Vitamin C</option>
-              <option>pH Level</option>
-              <option>Moisture</option>
+            <select 
+              value={selectedFeature}
+              onChange={(e) => setSelectedFeature(e.target.value)}
+              style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', outline: 'none' }}
+            >
+              <option value="Peak_0.85V">Peak Voltage (0.85V)</option>
+              <option value="Energy">Signal Energy</option>
+              <option value="Mean">Mean Current</option>
+              <option value="Std_Dev">Standard Deviation</option>
+              <option value="Skewness">Skewness</option>
+              <option value="Kurtosis">Kurtosis</option>
+              <option value="DCT_1">DCT Coefficient 1</option>
             </select>
           </div>
           
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div style={{ padding: '1rem', backgroundColor: 'var(--light-bg)', borderRadius: 'var(--radius-sm)' }}>
               <p className="text-muted" style={{ fontSize: '0.75rem' }}>Mean</p>
-              <p className="text-h3">9.68</p>
+              <p className="text-h3">{fMean.toFixed(4)}</p>
             </div>
             <div style={{ padding: '1rem', backgroundColor: 'var(--light-bg)', borderRadius: 'var(--radius-sm)' }}>
               <p className="text-muted" style={{ fontSize: '0.75rem' }}>Std Dev</p>
-              <p className="text-h3">2.45</p>
+              <p className="text-h3">{fStdDev.toFixed(4)}</p>
             </div>
             <div style={{ padding: '1rem', backgroundColor: 'var(--light-bg)', borderRadius: 'var(--radius-sm)' }}>
               <p className="text-muted" style={{ fontSize: '0.75rem' }}>Variance</p>
-              <p className="text-h3">6.02</p>
+              <p className="text-h3">{fVariance.toFixed(4)}</p>
             </div>
             <div style={{ padding: '1rem', backgroundColor: 'var(--light-bg)', borderRadius: 'var(--radius-sm)' }}>
               <p className="text-muted" style={{ fontSize: '0.75rem' }}>Missing</p>
-              <p className="text-h3">0</p>
+              <p className="text-h3">{fMissing}</p>
             </div>
           </div>
         </section>

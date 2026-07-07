@@ -3,8 +3,10 @@ from __future__ import annotations
 from typing import List
 
 from pydantic import BaseModel, ConfigDict, Field, StrictStr, validator
+from typing import List, Optional
 
 from app.core.config import MODEL_VERSION
+from app.services.decision_engine import BusinessDecision
 
 
 class _StrictBaseModel(BaseModel):
@@ -64,6 +66,7 @@ class InferenceResponse(_StrictBaseModel):
     processing_latency_ms: float
     results: InferenceResults
     logistics: InferenceLogistics
+    business_decision: Optional[BusinessDecision] = Field(default=None, description="Business-oriented recommendations from the Decision Engine")
 
 
 class FeatureContribution(_StrictBaseModel):
