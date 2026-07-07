@@ -77,6 +77,10 @@ export default function LivePrediction() {
   const streamFileInputRef = useRef(null);
   const [error, setError] = useState(null);
 
+  // Modal State for detailed results
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalData, setModalData] = useState(null);
+
   // XAI Explanations state
   const [selectedExplanationReadings, setSelectedExplanationReadings] = useState(null);
   const [selectedSampleName, setSelectedSampleName] = useState('');
@@ -140,6 +144,10 @@ export default function LivePrediction() {
       const response = await predictManual(payload, false);
       setSelectedExplanationReadings(payload.sensor_readings);
       setSelectedSampleName(payload.batch_id || "Manual Entry");
+      if (response) {
+        setModalData(response);
+        setIsModalOpen(true);
+      }
     } catch (err) {
       console.error("Manual prediction failed", err);
     }
@@ -563,6 +571,98 @@ export default function LivePrediction() {
     );
   };
 
+  const renderResultsModal = () => {
+    if (!isModalOpen || !modalData) return null;
+
+    const resultsData = {
+      results: modalData.results,
+      logistics: modalData.logistics,
+      business_decision: modalData.business_decision,
+      agreement_analysis: modalData.agreement_analysis
+    };
+
+    return (
+      <div 
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.75)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '2rem'
+        }}
+        onClick={() => {
+          setIsModalOpen(false);
+          setModalData(null);
+        }}
+      >
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          transition={{ duration: 0.2 }}
+          style={{
+            backgroundColor: 'var(--white)',
+            borderRadius: 'var(--radius-lg)',
+            width: '100%',
+            maxWidth: '1000px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            border: '1px solid var(--border-color)',
+            position: 'relative'
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Close button */}
+          <button 
+            style={{
+              position: 'absolute',
+              top: '1.5rem',
+              right: '1.5rem',
+              background: 'var(--light-bg)',
+              border: 'none',
+              borderRadius: '50%',
+              width: '2.5rem',
+              height: '2.5rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              fontSize: '1.5rem',
+              lineHeight: 1,
+              color: 'var(--text-secondary)',
+              transition: 'all 0.15s ease',
+              zIndex: 10
+            }}
+            onClick={() => {
+              setIsModalOpen(false);
+              setModalData(null);
+            }}
+          >
+            &times;
+          </button>
+
+          {/* Modal Content */}
+          <div style={{ padding: '2.5rem' }}>
+            <ResultsDashboard resultsData={resultsData} />
+            {resultsData.business_decision && (
+              <div style={{ marginTop: '1.5rem' }}>
+                <DecisionDashboard decisionData={resultsData.business_decision} />
+              </div>
+            )}
+          </div>
+        </motion.div>
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col gap-8">
       <h1 className="text-h1 flex items-center gap-3">
@@ -886,6 +986,8 @@ export default function LivePrediction() {
                               onClick={() => {
                                 setSelectedExplanationReadings(sample.sensor_readings);
                                 setSelectedSampleName(`Sample #${sample.sample_index}`);
+                                setModalData(sample);
+                                setIsModalOpen(true);
                               }}
                               style={{ 
                                 cursor: 'pointer',
@@ -1189,6 +1291,8 @@ export default function LivePrediction() {
           </section>
         </div>
       )}
+
+      {renderResultsModal()}
     </div>
   );
 }

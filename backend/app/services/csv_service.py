@@ -162,6 +162,19 @@ def process_csv_batch(
             sensor_values=[float(val) for val in sensor_readings]
         )
 
+        agreement_analysis = None
+        try:
+            from app.services.model_agreement import analyze_model_agreement
+            if hasattr(ml_engine, "preprocess") and hasattr(ml_engine, "scaler") and ml_engine.scaler is not None:
+                sensor_features = np.asarray(sensor_readings, dtype=np.float32).reshape(1, -1)
+                X_selected = ml_engine.preprocess(sensor_features)
+                res_obj = analyze_model_agreement(X_selected)
+                if res_obj:
+                    agreement_analysis = res_obj.model_dump()
+        except Exception as e:
+            from app.core.logging_config import logger
+            logger.error(f"Failed running prediction agreement analysis in CSV batch: {e}")
+
         predictions_list.append({
             "sample_index": int(idx),
             "sensor_readings": [float(val) for val in sensor_readings],
@@ -181,7 +194,8 @@ def process_csv_batch(
                 },
                 "temperature_warning": temperature_warning,
             },
-            "business_decision": business_decision.model_dump()
+            "business_decision": business_decision.model_dump(),
+            "agreement_analysis": agreement_analysis
         })
 
     return {
