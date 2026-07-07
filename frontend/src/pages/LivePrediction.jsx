@@ -782,7 +782,7 @@ export default function LivePrediction() {
               <div className="grid-cols-4">
                 <div className="glass-card flex flex-col gap-2">
                   <span className="text-muted" style={{ fontSize: '0.875rem' }}>Total Samples</span>
-                  <span className="text-h1">{csvSummary?.total_samples}</span>
+                  <span className="text-h1">{csvResult?.total_samples}</span>
                   <span className="text-muted" style={{ fontSize: '0.75rem' }}>Measurements analysed</span>
                 </div>
 
@@ -1152,7 +1152,7 @@ export default function LivePrediction() {
                     >
                       <div className="flex items-center gap-3">
                         <span className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 600 }}>[{log.time}]</span>
-                        <span style={{ fontWeight: 500 }}>Sample #{log.index + 1}</span>
+                        <span style={{ fontWeight: 500 }}>Sample #{log.tick}</span>
                       </div>
                       <div className="flex items-center gap-4">
                         <span style={{ fontSize: '0.875rem' }}>Age: <strong>{log.age.toFixed(1)}d</strong> | Folic: <strong>{log.folic.toFixed(1)}µM</strong></span>

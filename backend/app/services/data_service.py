@@ -1,5 +1,6 @@
 import pandas as pd
 import random
+import math
 from pathlib import Path
 from app.core.logging_config import logger
 
@@ -93,7 +94,12 @@ def simulate_hardware_scan():
         
         # If there are non-numeric columns like ID, drop them.
         # Assuming X_features contains only features. If it contains batch_id, we filter it out.
-        features_array = [float(x) for x in features_array if isinstance(x, (int, float))]
+        # Also replace NaN values with 0.0 to prevent JSON serialization errors.
+        features_array = [
+            0.0 if (isinstance(x, (int, float)) and math.isnan(x)) else float(x)
+            for x in features_array
+            if isinstance(x, (int, float))
+        ]
         
         if len(features_array) > 11:
             features_array = features_array[:11]
