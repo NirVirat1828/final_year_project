@@ -330,7 +330,8 @@ export default function LivePrediction() {
             grade: response.results.freshness_grade,
             age: parseFloat(response.logistics.estimated_age_days.toFixed(2)),
             folic: parseFloat(response.results.folic_acid_uM.toFixed(1)),
-            shelf: parseFloat(response.logistics.remaining_shelf_life_days.toFixed(1))
+            shelf: parseFloat(response.logistics.remaining_shelf_life_days.toFixed(1)),
+            agreement: response.agreement_analysis ? response.agreement_analysis.agreement_percentage : null
           };
 
           setWsLog(prev => [newPred, ...prev]);
@@ -382,14 +383,22 @@ export default function LivePrediction() {
   let avgShelf = 0;
   let avgFolic = 0;
   let healthScore = 0;
+  let avgAgreement = null;
 
   const csvResults = csvResult?.predictions;
 
   if (csvResults && csvResults.length > 0) {
+    let agreementSum = 0;
+    let agreementCount = 0;
+
     csvResults.forEach(r => {
       const grade = r.results.freshness_grade;
       if (counts[grade] !== undefined) {
         counts[grade]++;
+      }
+      if (r.agreement_analysis && r.agreement_analysis.agreement_percentage !== undefined) {
+        agreementSum += r.agreement_analysis.agreement_percentage;
+        agreementCount++;
       }
     });
 
@@ -397,6 +406,10 @@ export default function LivePrediction() {
     avgShelf = csvResults.reduce((sum, r) => sum + r.logistics.remaining_shelf_life_days, 0) / csvResults.length;
     avgFolic = csvResults.reduce((sum, r) => sum + r.results.folic_acid_uM, 0) / csvResults.length;
     healthScore = ((counts.A + counts.B) / csvResults.length) * 100;
+    
+    if (agreementCount > 0) {
+      avgAgreement = agreementSum / agreementCount;
+    }
   }
 
   const chartData = [
@@ -880,7 +893,7 @@ export default function LivePrediction() {
               </div>
 
               {/* Summary Stats Grid */}
-              <div className="grid-cols-4">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1.5rem' }}>
                 <div className="glass-card flex flex-col gap-2">
                   <span className="text-muted" style={{ fontSize: '0.875rem' }}>Total Samples</span>
                   <span className="text-h1">{csvResult?.total_samples}</span>
@@ -892,13 +905,21 @@ export default function LivePrediction() {
                   <span className="text-h1" style={{ color: healthScore >= 75 ? 'var(--success-green)' : '#F1C40F' }}>
                     {healthScore.toFixed(1)}%
                   </span>
-                  <span className="text-muted" style={{ fontSize: '0.75rem' }}>% graded A or B (Premium/Good)</span>
+                  <span className="text-muted" style={{ fontSize: '0.75rem' }}>% graded A or B</span>
+                </div>
+
+                <div className="glass-card flex flex-col gap-2">
+                  <span className="text-muted" style={{ fontSize: '0.875rem' }}>Model Agreement</span>
+                  <span className="text-h1" style={{ color: avgAgreement >= 75 ? 'var(--success-green)' : '#F1C40F' }}>
+                    {avgAgreement !== null ? `${avgAgreement.toFixed(1)}%` : 'N/A'}
+                  </span>
+                  <span className="text-muted" style={{ fontSize: '0.75rem' }}>Avg ensemble consensus</span>
                 </div>
 
                 <div className="glass-card flex flex-col gap-2">
                   <span className="text-muted" style={{ fontSize: '0.875rem' }}>Avg. Remaining Shelf Life</span>
                   <span className="text-h1">{avgShelf.toFixed(1)} Days</span>
-                  <span className="text-muted" style={{ fontSize: '0.75rem' }}>Based on storage temp {storageTemperature}°C</span>
+                  <span className="text-muted" style={{ fontSize: '0.75rem' }}>Based on {storageTemperature}°C</span>
                 </div>
 
                 <div className="glass-card flex flex-col gap-2">
@@ -1259,6 +1280,11 @@ export default function LivePrediction() {
                       </div>
                       <div className="flex items-center gap-4">
                         <span style={{ fontSize: '0.875rem' }}>Age: <strong>{log.age.toFixed(1)}d</strong> | Folic: <strong>{log.folic.toFixed(1)}µM</strong></span>
+                        {log.agreement !== null && (
+                          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: log.agreement >= 75 ? '#2ECC71' : (log.agreement >= 50 ? '#F1C40F' : '#E74C3C') }}>
+                            {log.agreement.toFixed(0)}% Consensus
+                          </span>
+                        )}
                         <span 
                           className="status-badge"
                           style={{

@@ -292,6 +292,23 @@ async def websocket_live_predict(
                 else "Temperature within refrigerated baseline range."
             )
 
+            agreement_analysis = None
+            try:
+                from app.services.model_agreement import analyze_model_agreement
+                if hasattr(ml_engine, "preprocess") and hasattr(ml_engine, "scaler") and ml_engine.scaler is not None:
+                    # For live stream, we can use the preprocessed features directly
+                    sensor_features_array = np.asarray(sensor_features, dtype=np.float32).reshape(1, -1)
+                    if len(sensor_features) == 11:
+                         X_selected = ml_engine.preprocess(sensor_features_array)
+                    else:
+                         X_selected = ml_engine.preprocess(sensor_features_array)
+                         
+                    res_obj = analyze_model_agreement(X_selected)
+                    if res_obj:
+                        agreement_analysis = res_obj.model_dump()
+            except Exception as e:
+                logger.error(f"Failed running prediction agreement analysis in Live Stream: {e}")
+
             # Send response back
             await websocket.send_json({
                 "status": "success",
@@ -310,7 +327,8 @@ async def websocket_live_predict(
                         "upper_bound": float(ci.upper_bound),
                     },
                     "temperature_warning": temperature_warning,
-                }
+                },
+                "agreement_analysis": agreement_analysis
             })
     except WebSocketDisconnect:
         logger.info("WebSocket connection closed by client")
