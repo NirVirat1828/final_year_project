@@ -59,6 +59,24 @@ class InferenceLogistics(_StrictBaseModel):
     temperature_warning: StrictStr
 
 
+class ModelAgreementDetail(_StrictBaseModel):
+    model_name: StrictStr
+    predicted_class: StrictStr
+    prediction_probabilities: Optional[dict[str, float]] = Field(default=None, description="Prediction probability mapping if available")
+    confidence_score: float
+    inference_status: StrictStr
+
+
+class ConsensusAnalysis(_StrictBaseModel):
+    consensus_prediction: StrictStr
+    agreement_percentage: float
+    agreement_level: StrictStr
+    total_discovered_models: int
+    successfully_executed_models: int
+    failed_models: int
+    model_predictions: List[ModelAgreementDetail]
+
+
 class InferenceResponse(_StrictBaseModel):
     status: StrictStr
     model_version: StrictStr = Field(default=MODEL_VERSION, description="The active version of the ML engine.")
@@ -67,6 +85,8 @@ class InferenceResponse(_StrictBaseModel):
     results: InferenceResults
     logistics: InferenceLogistics
     business_decision: Optional[BusinessDecision] = Field(default=None, description="Business-oriented recommendations from the Decision Engine")
+    agreement_analysis: Optional[ConsensusAnalysis] = Field(default=None, description="Model agreement consensus analysis")
+
 
 
 class FeatureContribution(_StrictBaseModel):

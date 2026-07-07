@@ -108,6 +108,16 @@ def process_batch_inference(
         sensor_values=request.sensor_readings
     )
 
+    agreement_analysis = None
+    try:
+        from app.services.model_agreement import analyze_model_agreement
+        if hasattr(ml_engine, "preprocess") and hasattr(ml_engine, "scaler") and ml_engine.scaler is not None:
+            X_selected = ml_engine.preprocess(sensor_features)
+            agreement_analysis = analyze_model_agreement(X_selected)
+    except Exception as e:
+        from app.core.logging_config import logger
+        logger.error(f"Failed running prediction agreement analysis: {e}")
+
     response = InferenceResponse(
         status="success",
         batch_id=request.batch_id,
@@ -132,7 +142,8 @@ def process_batch_inference(
                 else "Temperature within refrigerated baseline range."
             ),
         ),
-        business_decision=business_decision
+        business_decision=business_decision,
+        agreement_analysis=agreement_analysis
     )
 
     return response
