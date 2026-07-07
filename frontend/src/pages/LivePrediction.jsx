@@ -75,6 +75,7 @@ export default function LivePrediction() {
   const [wsChartData, setWsChartData] = useState([]);
   const [streamingFile, setStreamingFile] = useState(null);
   const streamFileInputRef = useRef(null);
+  const [error, setError] = useState(null);
 
   // XAI Explanations state
   const [selectedExplanationReadings, setSelectedExplanationReadings] = useState(null);
