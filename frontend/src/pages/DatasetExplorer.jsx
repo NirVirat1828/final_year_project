@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Filter, Loader2 } from 'lucide-react';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { getDataset } from '../api/dataApi';
 import ErrorCard from '../components/ui/ErrorCard';
 
@@ -204,6 +204,7 @@ export default function DatasetExplorer() {
                   ))}
                 </Pie>
                 <Tooltip />
+                <Legend verticalAlign="bottom" height={36} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -213,9 +214,9 @@ export default function DatasetExplorer() {
           <h2 className="text-h3 mb-4">Feature Histogram (Folic Acid)</h2>
           <div style={{ height: '300px' }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={featureDistData}>
-                <XAxis dataKey="range" stroke="var(--text-secondary)" />
-                <YAxis stroke="var(--text-secondary)" />
+              <BarChart data={featureDistData} margin={{ top: 10, right: 10, left: 15, bottom: 20 }}>
+                <XAxis dataKey="range" stroke="var(--text-secondary)" label={{ value: 'Folic Acid Concentration (µM)', position: 'insideBottom', offset: -10, fill: 'var(--text-secondary)', fontSize: 12 }} height={50} />
+                <YAxis stroke="var(--text-secondary)" label={{ value: 'Sample Count', angle: -90, position: 'insideLeft', offset: 0, fill: 'var(--text-secondary)', fontSize: 12 }} />
                 <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: 'var(--shadow-md)' }} />
                 <Bar dataKey="count" fill="var(--primary-orange)" radius={[4, 4, 0, 0]} />
               </BarChart>

@@ -61,7 +61,7 @@ export default function ExecutiveDashboard() {
         />
         <StatsCard 
           label="Average Confidence" 
-          value={isLoading ? "..." : (stats.average_confidence === '-' ? '-' : `${(stats.average_confidence * 100).toFixed(1)}%`)} 
+          value={isLoading ? "..." : (stats.average_confidence === '-' ? '-' : `${Number(stats.average_confidence).toFixed(1)}%`)} 
           icon={<Trophy size={24} className="text-primary-orange" />} 
           index={1} 
         />
