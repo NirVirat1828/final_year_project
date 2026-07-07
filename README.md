@@ -1,6 +1,6 @@
 # Electronic Tongue Orange Freshness API
 
-![Orange Freshness API Banner](https://via.placeholder.com/1000x200?text=Orange+Freshness+Predictor+API)
+![Orange Freshness API Banner](docs/images/orange_freshness_api_banner.png)
 
 ## 1. Project Overview
 
@@ -64,14 +64,29 @@ backend/
 │   │   ├── config.py             # Model versioning and environment configs
 │   │   ├── logging_config.py     # Production stdout logger
 │   │   └── ml_engine.py          # ML Singleton and SHAP compute layer
+│   ├── database/
+│   │   ├── database.py           # Database connection and engine
+│   │   └── models.py             # SQLAlchemy models for history tracking
 │   ├── schemas/
-│   │   └── payload.py            # Strict Pydantic interface validations
-│   └── services/
-│       ├── explain_service.py    # Explanation formatting and feature ranking
-│       ├── grading_service.py    # Business rules mapping days to freshness grades
-│       └── shap_visualization.py # Matplotlib visual generator for SHAP data
+│   │   ├── payload.py            # Strict Pydantic interface validations
+│   │   └── history.py            # Pydantic schemas for prediction history
+│   ├── services/
+│   │   ├── csv_service.py        # CSV batch processing service
+│   │   ├── data_service.py       # Services for fetching dataset, benchmarks
+│   │   ├── decision_engine.py    # Advanced evaluation / multi-model orchestration
+│   │   ├── explain_service.py    # Explanation formatting and feature ranking
+│   │   ├── grading_service.py    # Business rules mapping days to freshness grades
+│   │   ├── history_service.py    # CRUD operations for prediction history
+│   │   ├── report_service.py     # PDF report assembly and generation
+│   │   └── shap_visualization.py # Matplotlib visual generator for SHAP data
+│   └── utils/
+│       └── pdf_generator.py      # Low-level ReportLab PDF layouts
 ├── models/                       # Serialized Scikit-Learn artifacts
 └── requirements.txt
+frontend/                         # Vite + React Dashboard application
+├── src/                          # Dashboard components and page layouts
+├── package.json
+└── vite.config.js
 tests/                            # Pytest integration & unit testing suite
 ```
 
@@ -221,7 +236,7 @@ The generated PDF report includes:
 - **Top Influential Features (Optional)**: If SHAP explanation data exists, a ranking of the most impactful features is included.
 
 ### Screenshots
-![PDF Report Placeholder](https://via.placeholder.com/600x800?text=PDF+Prediction+Report)
+![PDF Report](docs/images/pdf_prediction_report.png)
 
 ### Why On-Demand Generation?
 Generating PDFs dynamically on-demand provides significant architectural advantages over pre-generating and storing them in the database or object storage:
@@ -269,6 +284,25 @@ Returns predictions mapped alongside SHAP-calculated feature importances.
 Returns a `image/png` buffer rendering the mathematical decision boundary.
 Accepts Query Parameters: `?model=day&plot_type=waterfall`
 
+### `POST /api/v1/analyze-csv`
+Upload a CSV file containing rows of electrochemical readings to generate batch predictions.
+Supports query parameters `preprocessing_strategy` ("raw" or "advanced") and `storage_temperature_c`.
+
+### `WS /api/v1/ws/live-predict`
+Establish a WebSocket connection for low-latency live streaming predictions. Broadcast sensor array readings frames to receive instant age predictions, freshness grades, remaining shelf life, and temperature alerts.
+
+### `GET /api/v1/history/stats`
+Retrieves aggregate metrics and analytics across the history of predictions (e.g., total runs, grade distributions).
+
+### `GET /api/v1/dataset`
+Fetch paginated dataset records for browsing historical sensor data.
+
+### `GET /api/v1/models/benchmark`
+Fetch model details, parameters, evaluation metrics (like Mean Absolute Error, R² score).
+
+### `GET /api/v1/hardware/simulate`
+Simulate a hardware scan. Returns 11 realistic sensor readings selected at random from the validation dataset.
+
 ---
 
 ## 8. SHAP Explainability
@@ -287,11 +321,11 @@ Random Forests are powerful but notoriously "black box" in nature. SHAP opens th
 
 ## 9. Screenshots
 
-*Placeholder for Swagger UI*
-![Swagger UI Placeholder](https://via.placeholder.com/800x400?text=Swagger+UI+Documentation)
+*Swagger UI Documentation*
+![Swagger UI Documentation](docs/images/swagger_ui_documentation.png)
 
-*Placeholder for Waterfall Plot*
-![Waterfall Plot Placeholder](https://via.placeholder.com/600x400?text=SHAP+Waterfall+Plot)
+*SHAP Waterfall Plot*
+![SHAP Waterfall Plot](docs/images/shap_waterfall_plot.png)
 
 ---
 
@@ -312,3 +346,29 @@ pytest tests/ -v
 * **Continuous Model Retraining Pipeline:** Integrate a DAG scheduler (like Airflow or Prefect) to periodically retrain the `.pkl` models to handle data drift and eliminate scikit-learn versioning warnings.
 * **Containerization:** Wrap the backend inside a lightweight `Dockerfile` for seamless Kubernetes deployment.
 * **Monitoring:** Hook the custom python `logger` into Prometheus and Grafana for real-time latency and prediction distribution tracking.
+
+---
+
+## 12. Frontend Dashboard
+
+The repository includes a modern React dashboard powered by Vite, providing a visual control panel and analytics layer for the Orange Freshness Predictor.
+
+### Features
+* **Interactive Inference Simulator**: Manually input electrochemical sensor readings or trigger a mock hardware scan to predict storage age, remaining shelf life, and grade.
+* **History Log & PDF Download**: View a paginated grid of all prediction history records and download on-demand PDF reports directly.
+* **Dataset Explorer**: Paginated tabular explorer of the underlying training/testing data.
+* **Model Benchmarks**: Visual summary of RandomForest model performance metrics (MAE, R², RFE rankings).
+
+### Run Locally
+1. **Navigate to the frontend directory:**
+   ```bash
+   cd frontend
+   ```
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+3. **Start the development server:**
+   ```bash
+   npm run dev
+   ```
