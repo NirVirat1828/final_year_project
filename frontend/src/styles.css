@@ -325,6 +325,7 @@ body {
 .text-h2 { font-size: 1.5rem; font-weight: 600; color: var(--dark-slate); }
 .text-h3 { font-size: 1.125rem; font-weight: 600; color: var(--text-primary); }
 .text-muted { color: var(--text-secondary); }
+.text-white { color: var(--white) !important; }
 .mb-2 { margin-bottom: 0.5rem; }
 .mb-4 { margin-bottom: 1rem; }
 .mb-6 { margin-bottom: 1.5rem; }
