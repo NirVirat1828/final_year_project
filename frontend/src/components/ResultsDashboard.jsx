@@ -144,6 +144,103 @@ export default function ResultsDashboard({ resultsData }) {
             </p>
           </div>
         </section>
+
+        {resultsData?.agreement_analysis && (
+          <section className="diagnostics-section" style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem', marginTop: '1.5rem' }} aria-labelledby="agreement-diagnostics-title">
+            <div className="section-heading compact diagnostics-heading">
+              <p className="section-kicker diagnostics-kicker">Reliability Diagnostics</p>
+              <h3 id="agreement-diagnostics-title">Model Agreement consensus</h3>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginTop: '0.75rem' }}>
+              {/* Consensus Score Card */}
+              <div className="glass-card" style={{ padding: '1.25rem', backgroundColor: 'var(--light-bg)', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Consensus Reliability</h4>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 500 }}>Consensus Class</span>
+                    <strong style={{ fontSize: '1.75rem', color: 'var(--text-primary)', lineHeight: 1.2, marginTop: '0.125rem' }}>
+                      Class {resultsData.agreement_analysis.consensus_prediction}
+                    </strong>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 500 }}>Agreement Score</span>
+                    <strong style={{ fontSize: '1.75rem', color: 'var(--primary-orange)', lineHeight: 1.2, marginTop: '0.125rem' }}>
+                      {resultsData.agreement_analysis.agreement_percentage}%
+                    </strong>
+                  </div>
+                </div>
+                <div>
+                  <span className="text-muted" style={{ fontSize: '0.75rem', display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Agreement Level</span>
+                  <span 
+                    className="status-badge" 
+                    style={{ 
+                      display: 'inline-block',
+                      padding: '0.25rem 0.75rem', 
+                      borderRadius: 'var(--radius-sm)', 
+                      fontSize: '0.8125rem', 
+                      fontWeight: 600,
+                      backgroundColor: 
+                        resultsData.agreement_analysis.agreement_level === 'Very Strong' ? 'rgba(46, 204, 113, 0.15)' :
+                        resultsData.agreement_analysis.agreement_level === 'Strong' ? 'rgba(52, 152, 219, 0.15)' :
+                        resultsData.agreement_analysis.agreement_level === 'Moderate' ? 'rgba(245, 158, 11, 0.15)' :
+                        'rgba(239, 68, 68, 0.15)',
+                      color: 
+                        resultsData.agreement_analysis.agreement_level === 'Very Strong' ? 'var(--success-green)' :
+                        resultsData.agreement_analysis.agreement_level === 'Strong' ? '#3498DB' :
+                        resultsData.agreement_analysis.agreement_level === 'Moderate' ? 'var(--primary-orange)' :
+                        '#ef4444'
+                    }}
+                  >
+                    {resultsData.agreement_analysis.agreement_level}
+                  </span>
+                </div>
+              </div>
+
+              {/* Individual Models Panel */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <h4 style={{ margin: 0, fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Model Decision Panel</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px' }}>
+                  {resultsData.agreement_analysis.model_predictions.map((pred, i) => (
+                    <div 
+                      key={i} 
+                      style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center', 
+                        padding: '0.625rem 0.875rem', 
+                        backgroundColor: 'var(--white)', 
+                        border: '1px solid var(--border-color)', 
+                        borderRadius: 'var(--radius-sm)',
+                        fontSize: '0.8125rem',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{pred.model_name}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
+                          Pred: <strong style={{ color: 'var(--text-primary)', fontSize: '0.8125rem' }}>{pred.predicted_class}</strong>
+                        </span>
+                        <span 
+                          style={{ 
+                            padding: '0.125rem 0.375rem', 
+                            borderRadius: '4px', 
+                            fontSize: '0.75rem', 
+                            fontWeight: 600,
+                            backgroundColor: pred.inference_status === 'success' ? 'rgba(46, 204, 113, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                            color: pred.inference_status === 'success' ? 'var(--success-green)' : '#ef4444'
+                          }}
+                        >
+                          {(pred.confidence_score * 100).toFixed(0)}% Conf
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
       </article>
     </section>
   )
