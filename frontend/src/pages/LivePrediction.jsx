@@ -252,15 +252,24 @@ export default function LivePrediction() {
           'DCT_1', 'DCT_2', 'DCT_3', 'DCT_4', 'DCT_5'
         ].map(colName => headers.indexOf(colName));
 
-        const parsedRows = [];
-        for (let i = 1; i < lines.length; i++) {
-          const parts = lines[i].split(',');
-          if (parts.length < 2) continue;
-          
-          const numericParts = parts.map(parseFloat);
-          if (currentCols.length >= 5) {
-            parsedRows.push(currentCols.map(idx => numericParts[idx] || 0.0));
-          } else if (engineeredCols.every(idx => idx !== -1)) {
+        let parsedRows = [];
+        if (currentCols.length >= 5) {
+          // Extract features by column (each sensor gets a full sweep)
+          const columns = Array(currentCols.length).fill().map(() => []);
+          for (let i = 1; i < lines.length; i++) {
+            const parts = lines[i].split(',');
+            if (parts.length < 2) continue;
+            const numericParts = parts.map(parseFloat);
+            currentCols.forEach((colIdx, idx) => {
+              columns[idx].push(numericParts[colIdx] || 0.0);
+            });
+          }
+          parsedRows = columns;
+        } else if (engineeredCols.every(idx => idx !== -1)) {
+          for (let i = 1; i < lines.length; i++) {
+            const parts = lines[i].split(',');
+            if (parts.length < 2) continue;
+            const numericParts = parts.map(parseFloat);
             parsedRows.push(engineeredCols.map(idx => numericParts[idx] || 0.0));
           }
         }

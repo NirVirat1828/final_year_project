@@ -97,12 +97,12 @@ def process_csv_batch(
     
     # Check if this is a raw sensor sweep CSV (has current_1...current_15)
     if len(current_cols) >= 5:
-        # Preprocess each row to extract 11 features
+        # Preprocess each column to extract 11 features per sensor
         preprocessor = CSVPreprocessor()
         extracted_features = []
-        for _, row in df.iterrows():
+        for col in current_cols:
             # Get currents as numeric values
-            signal = row[current_cols].values.astype(float)
+            signal = df[col].values.astype(float)
             feats = preprocessor.extract_features(signal)
             extracted_features.append(feats)
         df_features = pd.DataFrame(extracted_features)

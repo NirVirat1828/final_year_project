@@ -254,7 +254,7 @@ async def websocket_live_predict(
             if len(readings) >= 15:
                 # Raw signal
                 preprocessor = CSVPreprocessor()
-                signal = np.array(readings[:15], dtype=float)
+                signal = np.array(readings, dtype=float)
                 feats = preprocessor.extract_features(signal)
                 sensor_features = [feats[col] for col in EXPECTED_FEATURE_COLS]
             elif len(readings) == 11:
